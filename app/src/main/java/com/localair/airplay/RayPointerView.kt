@@ -12,6 +12,7 @@ import android.view.ViewConfiguration
 /** Optional relative pointer surface. Hover never presses a remote button. */
 class RayPointerView(context: Context, private val hid: () -> HidController?) : View(context) {
     var observer: ((Float, Float, Int, Int, Long) -> Unit)? = null
+    var onReset: (() -> Unit)? = null
     private val motion = RayDeltaEngine()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.CYAN; strokeWidth = 2f }
     private var aimX = -1f
@@ -29,6 +30,7 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
         contentDescription = "相对射线鼠标：移动射线移动指针，确认点击 iPad 当前指针"
     }
     fun resetInput() {
+        onReset?.invoke()
         motion.reset(); aimX = -1f; aimY = -1f; touching = false; tap = false; confirmKey = -1
         invalidate()
     }
@@ -90,6 +92,7 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
         return true
     }
     override fun performClick(): Boolean {
+        onReset?.invoke()
         super.performClick()
         if (isEnabled && hasWindowFocus() && inside(aimX,aimY)) hid()?.clickPointer()
         return true

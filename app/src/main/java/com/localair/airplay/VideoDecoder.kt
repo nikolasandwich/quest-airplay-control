@@ -46,7 +46,11 @@ class VideoDecoder(
     private var pps: ByteArray? = null
     @Volatile var hasFrames = false; private set
     @Volatile private var confirmedSurfaceOwner: Any? = null
+    @Volatile private var lastOutputSubmittedAt = -1L
     fun hasFramesFor(owner: Any?) = owner != null && confirmedSurfaceOwner === owner && hasFrames
+    // Liveness gate only; a submission timestamp is not proof of visible content.
+    fun hasRecentOutputFor(owner: Any?) = hasFramesFor(owner) &&
+        lastOutputSubmittedAt >= 0 && SystemClock.uptimeMillis()-lastOutputSubmittedAt in 0..500
     @Volatile private var rendered = 0L
     @Volatile private var fed = 0L
 
@@ -351,6 +355,7 @@ class VideoDecoder(
                 return
             }
             if (!visible) return
+            lastOutputSubmittedAt = SystemClock.uptimeMillis()
             rendered++
             confirmSurfaceBuffer(c)
             if (rendered == 1L || rendered % 60 == 0L) Log.i(TAG, "rendered $rendered frames")

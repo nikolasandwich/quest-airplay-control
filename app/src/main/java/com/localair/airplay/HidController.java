@@ -282,7 +282,7 @@ public final class HidController extends ContextWrapper {
             // 0xffff, local product 1, version 0x0018. Not a shipping vendor ID.
             device.addCharacteristic(characteristic(0x2a50,2,1,new byte[]{1,(byte)0xff,(byte)0xff,1,0,0x18,0}));
             device.addCharacteristic(characteristic(0x2a24,2,1,"Quest HID Lab prototype".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-            device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.7-recovery".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.8-align-preview".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             pendingServices.clear();
             pendingServices.add(service);pendingServices.add(battery);pendingServices.add(device);
             addNextService();

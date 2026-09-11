@@ -43,6 +43,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var rayButton: Button
     private var rayMode = true
     private lateinit var pointerObservation: PointerObservation
+    private lateinit var rayAlignment: RayAlignment
+    private lateinit var alignButton: Button
 
     private val svc get() = AirPlayService.instance
 
@@ -58,6 +60,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pointerObservation = PointerObservation(this)
+        rayAlignment = RayAlignment({ surfaceView }, { attachedHid }, {
+            hasWindowFocus() && rayMode && attachedHid?.isArmed == true &&
+                surfaceReady && svc?.video?.hasRecentOutputFor(surfaceOwner) == true
+        }) { updateHidUi() }
         rayMode = getSharedPreferences("pointer_ui", MODE_PRIVATE).getBoolean("relative_ray_enabled", true)
         @Suppress("DEPRECATION")
         window.addFlags(
@@ -87,7 +93,11 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             FrameLayout.LayoutParams.MATCH_PARENT,
         ))
         rayView = RayPointerView(this) { attachedHid }.apply { visibility = View.GONE }
-        rayView.observer = pointerObservation::recordRay
+        rayView.observer = { x,y,w,h,time ->
+            pointerObservation.recordRay(x,y,w,h,time)
+            rayAlignment.onRay(x,y,w,h,time)
+        }
+        rayView.onReset = rayAlignment::invalidateTarget
         videoArea.addView(rayView, FrameLayout.LayoutParams(-1, -1).apply { gravity = Gravity.CENTER })
         waiting = TextView(this).apply {
             text = "${DeviceIdentity.deviceName(this@MainActivity)}\nwaiting for AirPlay…"
@@ -123,6 +133,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             rayView.resetInput()
             updateHidUi()
             refreshVideoState()
+        }
+        alignButton = action(pointer, "停稳对齐：关") {
+            rayAlignment.setEnabled(!rayAlignment.enabled)
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
         rayButton.setOnLongClickListener {
@@ -173,6 +186,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val hid = attachedHid ?: return
         hidStatus.text = hid.statusText()
         if (rayMode && hid.isArmed) hidStatus.text = "相对射线：移动射线带动指针 · 扳机/确认键点击当前指针（非绝对定位）"
+        if (rayAlignment.enabled) hidStatus.text = "停稳对齐（实验）：${rayAlignment.status} · 不自动点击"
+        alignButton.text = if (rayAlignment.enabled) "停稳对齐：开" else "停稳对齐：关"
         rayButton.text = if (rayMode) "相对射线：开" else "相对射线：关"
         controlButton.text = if (hid.isArmed) "暂停控制" else "启用控制"
         previousButton.isEnabled = hid.isArmed
@@ -223,6 +238,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun onPause() {
+        rayAlignment.setEnabled(false)
         android.util.Log.i("AirPlayLifecycle", "pause surfaceReady=$surfaceReady")
         surfaceOwner?.let { svc?.video?.parkBeforeWindowStops(it) }
         pointerObservation.cancel()
@@ -333,6 +349,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun onDestroy() {
+        rayAlignment.close()
         pointerObservation.close()
         attachedHid?.detachUi(inputOwner)
         attachedHid = null
