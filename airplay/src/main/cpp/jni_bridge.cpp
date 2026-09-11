@@ -91,7 +91,7 @@ Java_com_localair_airplay_nativebridge_AirPlayNative_nativeStart(JNIEnv* env, jc
     g_raop = raop_init(10, &cbs);
     if (!g_raop) { LOGE("raop_init failed"); return 0; }
     raop_set_log_callback(g_raop, log_callback, nullptr);
-    raop_set_log_level(g_raop, RAOP_LOG_DEBUG);
+    raop_set_log_level(g_raop, RAOP_LOG_INFO);
 
     // dnssd_stub.c implements this API as a no-op store for name + hw_addr.
     // Kotlin (NsdManager) handles actual Bonjour advertising.

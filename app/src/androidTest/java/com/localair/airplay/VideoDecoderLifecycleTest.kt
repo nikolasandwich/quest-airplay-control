@@ -144,6 +144,39 @@ class VideoDecoderLifecycleTest : TestCase() {
         } finally { surface.release(); texture.release() }
     }
 
+    fun testParkingBeforeWindowReleasePreservesCodecForRebind() {
+        val oldTexture = SurfaceTexture(false).apply { setDefaultBufferSize(1920,1080) }
+        val oldSurface = Surface(oldTexture)
+        val nextTexture = SurfaceTexture(false).apply { setDefaultBufferSize(1920,1080) }
+        val nextSurface = Surface(nextTexture)
+        val owner = Any()
+        var current: MediaCodec? = null
+        try {
+            decoder.attachSurface(owner,oldSurface)
+            onDecoder {
+                val c = MediaCodec.createDecoderByType("video/avc")
+                current = c
+                setField("codec",c)
+                c.setCallback(field("callback") as MediaCodec.Callback,handler)
+                c.configure(android.media.MediaFormat.createVideoFormat("video/avc",1920,1080),oldSurface,null,0)
+                c.start()
+            }
+            decoder.parkBeforeWindowStops(owner)
+            onDecoder {
+                assertSame(current,field("codec"))
+                assertNull(field("target"))
+                assertTrue((field("parkingSurface") as Surface).isValid)
+                assertFalse(decoder.hasFramesFor(owner))
+            }
+            oldSurface.release(); oldTexture.release()
+            decoder.attachSurface(Any(),nextSurface)
+            onDecoder { assertSame(current,field("codec")); assertNotNull(field("target")) }
+        } finally {
+            oldSurface.release(); oldTexture.release()
+            nextSurface.release(); nextTexture.release()
+        }
+    }
+
     fun testReleaseIsTerminalEvenWithQueuedData() {
         onDecoder {
             decoder.release()

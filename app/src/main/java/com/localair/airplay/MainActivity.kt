@@ -224,6 +224,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onPause() {
         android.util.Log.i("AirPlayLifecycle", "pause surfaceReady=$surfaceReady")
+        surfaceOwner?.let { svc?.video?.parkBeforeWindowStops(it) }
         pointerObservation.cancel()
         if (::rayView.isInitialized) rayView.resetInput()
         attachedHid?.setFocused(inputOwner, false)
@@ -236,6 +237,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         if (rebuildSurfaceOnResume && ::surfaceView.isInitialized) {
             rebuildSurfaceOnResume = false
             rebuildVideoSurface()
+        } else if (surfaceReady) {
+            // Pause/resume without stop also needs to leave the parking surface.
+            surfaceOwner?.let { svc?.attachSurface(it,surfaceView.holder.surface) }
         }
         attachedHid?.setFocused(inputOwner, hasWindowFocus())
         refreshVideoState()
