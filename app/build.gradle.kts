@@ -13,8 +13,8 @@ android {
         applicationId = "com.questlab.airplayreceiver"
         minSdk = 28
         targetSdk = 34
-        versionCode = 8
-        versionName = "0.2.1"
+        versionCode = 9
+        versionName = "0.2.2-preview"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -34,6 +34,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("junit:junit:4.13.2")
     implementation(project(":airplay"))

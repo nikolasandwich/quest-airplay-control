@@ -52,6 +52,15 @@ public final class HidController extends ContextWrapper {
         armed=true;note("鼠标控制已启用：指向投屏画面，拨动摇杆滚动");
     }
     public boolean isArmed(){return armed;}
+    public boolean canMovePointer(){
+        return armed&&focused&&!needsReconnect&&!releaseUnconfirmed&&serviceReady&&server!=null&&host!=null&&subscribed&&!suspended&&protocolMode==1&&!notificationPending&&gestureRemaining==0&&!pointerAction.active()&&host.getBondState()==BluetoothDevice.BOND_BONDED;
+    }
+    /** Only a foreground video ray event may request bounded relative movement. */
+    public boolean movePointer(int x,int y){
+        if(!canMovePointer()||Math.abs((long)x)>32||Math.abs((long)y)>32)return false;
+        if(x==0&&y==0)return true;
+        return transmit(0,x,y,0,null);
+    }
     public boolean isStarted(){return server!=null;}
     public String statusText(){
         if(releaseUnconfirmed)return "鼠标松开未确认 · 请重连原 Quest 蓝牙设备";
@@ -273,7 +282,7 @@ public final class HidController extends ContextWrapper {
             // 0xffff, local product 1, version 0x0018. Not a shipping vendor ID.
             device.addCharacteristic(characteristic(0x2a50,2,1,new byte[]{1,(byte)0xff,(byte)0xff,1,0,0x18,0}));
             device.addCharacteristic(characteristic(0x2a24,2,1,"Quest HID Lab prototype".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-            device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.1".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.2-preview".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             pendingServices.clear();
             pendingServices.add(service);pendingServices.add(battery);pendingServices.add(device);
             addNextService();

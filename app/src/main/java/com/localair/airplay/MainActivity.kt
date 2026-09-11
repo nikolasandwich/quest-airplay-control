@@ -38,6 +38,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var leftButton: Button
     private lateinit var rightButton: Button
     private lateinit var clickButton: Button
+    private lateinit var rayView: RayPointerView
+    private lateinit var rayButton: Button
+    private var rayMode = false
 
     private val svc get() = AirPlayService.instance
 
@@ -79,6 +82,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT,
         ))
+        rayView = RayPointerView(this) { attachedHid }.apply { visibility = View.GONE }
+        videoArea.addView(rayView, FrameLayout.LayoutParams(-1, -1).apply { gravity = Gravity.CENTER })
         waiting = TextView(this).apply {
             text = "${DeviceIdentity.deviceName(this@MainActivity)}\nwaiting for AirPlay…"
             setTextColor(Color.WHITE)
@@ -105,6 +110,12 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         leftButton = action(pointer, "左滑（拖拽）") { svc?.hid?.dragPointer(-1) }
         clickButton = action(pointer, "点击当前指针") { svc?.hid?.clickPointer() }
         rightButton = action(pointer, "右滑（拖拽）") { svc?.hid?.dragPointer(1) }
+        rayButton = action(pointer, "相对射线：关") {
+            rayMode = !rayMode
+            rayView.resetInput()
+            updateHidUi()
+            refreshVideoState()
+        }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
         setContentView(root)
 
@@ -134,18 +145,27 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         if (!::hidStatus.isInitialized) return
         val hid = attachedHid ?: return
         hidStatus.text = hid.statusText()
+        if (rayMode && hid.isArmed) hidStatus.text = "相对射线：移动射线带动指针 · 扳机/确认键点击当前指针（非绝对定位）"
+        rayButton.text = if (rayMode) "相对射线：开" else "相对射线：关"
         controlButton.text = if (hid.isArmed) "暂停控制" else "启用控制"
         previousButton.isEnabled = hid.isArmed
         nextButton.isEnabled = hid.isArmed
         leftButton.isEnabled = hid.isArmed
         rightButton.isEnabled = hid.isArmed
         clickButton.isEnabled = hid.isArmed
+        refreshVideoState()
     }
 
     private fun refreshVideoState() {
         if (!::waiting.isInitialized) return
         // Broadcasts are notifications; always read the current service snapshot.
         waiting.visibility = if (surfaceReady && svc?.video?.hasFrames == true) View.GONE else View.VISIBLE
+        if (::rayView.isInitialized) {
+            val usable = rayMode && waiting.visibility == View.GONE && attachedHid?.isArmed == true && !isInPictureInPictureMode
+            rayView.visibility = if (usable) View.VISIBLE else View.GONE
+            rayView.isEnabled = usable
+            if (!usable) rayView.resetInput()
+        }
     }
 
     private fun connectMouse() {
@@ -171,9 +191,11 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         attachedHid?.setFocused(inputOwner, hasFocus)
+        if (!hasFocus && ::rayView.isInitialized) rayView.resetInput()
     }
 
     override fun onPause() {
+        if (::rayView.isInitialized) rayView.resetInput()
         attachedHid?.setFocused(inputOwner, false)
         super.onPause()
     }
@@ -208,6 +230,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         if (lp.width != width || lp.height != height || lp.gravity != Gravity.CENTER) {
             lp.width = width; lp.height = height; lp.gravity = Gravity.CENTER
             surfaceView.layoutParams = lp
+            if (::rayView.isInitialized) {
+                rayView.resetInput()
+                rayView.layoutParams = FrameLayout.LayoutParams(width, height, Gravity.CENTER)
+            }
             android.util.Log.i("AirPlayLayout", "fit=${width}x${height} container=${parent.width}x${parent.height} aspect=$ratio")
         }
     }
@@ -227,6 +253,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         surfaceOwner?.let { svc?.detachSurface(it) }
         surfaceOwner = null
         waiting.visibility = View.VISIBLE
+        rayView.resetInput()
+        rayView.visibility = View.GONE
     }
 
     override fun onDestroy() {
@@ -246,6 +274,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         controls.visibility = if (inPip) View.GONE else View.VISIBLE
         hidStatus.visibility = if (inPip) View.GONE else View.VISIBLE
         if (inPip) attachedHid?.setFocused(inputOwner, false)
+        rayView.resetInput()
+        rayView.visibility = View.GONE
         waiting.visibility = if (inPip) View.GONE else
             if (svc?.video?.hasFrames == true) View.GONE else View.VISIBLE
     }
