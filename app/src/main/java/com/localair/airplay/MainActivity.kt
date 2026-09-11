@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var clickButton: Button
     private lateinit var rayView: RayPointerView
     private lateinit var rayButton: Button
-    private var rayMode = false
+    private var rayMode = true
 
     private val svc get() = AirPlayService.instance
 
@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        rayMode = getSharedPreferences("pointer_ui", MODE_PRIVATE).getBoolean("relative_ray_enabled", true)
         @Suppress("DEPRECATION")
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
@@ -112,6 +113,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         rightButton = action(pointer, "右滑（拖拽）") { svc?.hid?.dragPointer(1) }
         rayButton = action(pointer, "相对射线：关") {
             rayMode = !rayMode
+            getSharedPreferences("pointer_ui", MODE_PRIVATE).edit()
+                .putBoolean("relative_ray_enabled", rayMode).apply()
             rayView.resetInput()
             updateHidUi()
             refreshVideoState()
