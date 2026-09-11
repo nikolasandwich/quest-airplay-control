@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var rayView: RayPointerView
     private lateinit var rayButton: Button
     private var rayMode = true
+    private lateinit var pointerObservation: PointerObservation
 
     private val svc get() = AirPlayService.instance
 
@@ -55,6 +56,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pointerObservation = PointerObservation(this)
         rayMode = getSharedPreferences("pointer_ui", MODE_PRIVATE).getBoolean("relative_ray_enabled", true)
         @Suppress("DEPRECATION")
         window.addFlags(
@@ -84,6 +86,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             FrameLayout.LayoutParams.MATCH_PARENT,
         ))
         rayView = RayPointerView(this) { attachedHid }.apply { visibility = View.GONE }
+        rayView.observer = pointerObservation::recordRay
         videoArea.addView(rayView, FrameLayout.LayoutParams(-1, -1).apply { gravity = Gravity.CENTER })
         waiting = TextView(this).apply {
             text = "${DeviceIdentity.deviceName(this@MainActivity)}\nwaiting for AirPlay…"
@@ -120,6 +123,15 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             refreshVideoState()
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
+        rayButton.setOnLongClickListener {
+            if (surfaceReady && svc?.video?.hasFrames == true && hasWindowFocus()) {
+                val started = pointerObservation.start(surfaceView.holder.surface,surfaceView.width,surfaceView.height) { message ->
+                    if (!isDestroyed) android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show()
+                }
+                android.widget.Toast.makeText(this,if (started) "只读采样约3秒，请手动移动指针" else "采样未开始",android.widget.Toast.LENGTH_SHORT).show()
+            }
+            true
+        }
         setContentView(root)
 
         val svcIntent = Intent(this, AirPlayService::class.java)
@@ -195,9 +207,11 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         super.onWindowFocusChanged(hasFocus)
         attachedHid?.setFocused(inputOwner, hasFocus)
         if (!hasFocus && ::rayView.isInitialized) rayView.resetInput()
+        if (!hasFocus && ::pointerObservation.isInitialized) pointerObservation.cancel()
     }
 
     override fun onPause() {
+        pointerObservation.cancel()
         if (::rayView.isInitialized) rayView.resetInput()
         attachedHid?.setFocused(inputOwner, false)
         super.onPause()
@@ -231,6 +245,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
         val lp = surfaceView.layoutParams as FrameLayout.LayoutParams
         if (lp.width != width || lp.height != height || lp.gravity != Gravity.CENTER) {
+            pointerObservation.cancel()
             lp.width = width; lp.height = height; lp.gravity = Gravity.CENTER
             surfaceView.layoutParams = lp
             if (::rayView.isInitialized) {
@@ -252,6 +267,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        pointerObservation.cancel()
         surfaceReady = false
         surfaceOwner?.let { svc?.detachSurface(it) }
         surfaceOwner = null
@@ -261,6 +277,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun onDestroy() {
+        pointerObservation.close()
         attachedHid?.detachUi(inputOwner)
         attachedHid = null
         unregisterReceiver(framesReceiver)

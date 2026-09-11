@@ -11,6 +11,7 @@ import android.view.ViewConfiguration
 
 /** Optional relative pointer surface. Hover never presses a remote button. */
 class RayPointerView(context: Context, private val hid: () -> HidController?) : View(context) {
+    var observer: ((Float, Float, Int, Int, Long) -> Unit)? = null
     private val motion = RayDeltaEngine()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.CYAN; strokeWidth = 2f }
     private var aimX = -1f
@@ -40,6 +41,7 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
             MotionEvent.ACTION_HOVER_MOVE -> {
                 if (!inside(event.x, event.y)) { resetInput(); return true }
                 aim(event.x, event.y)
+                observer?.invoke(event.x,event.y,width,height,event.eventTime)
                 val controller = hid()
                 val delta = motion.event(event.x, event.y, width, height, event.eventTime,
                     !touching && controller?.canMovePointer() == true)
