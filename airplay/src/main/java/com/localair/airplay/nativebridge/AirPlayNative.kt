@@ -12,7 +12,7 @@ interface AudioSink {
 object AirPlayNative {
     init { System.loadLibrary("airplay_native") }
 
-    fun start(): Int = nativeStart()
+    fun start(name: String, address: ByteArray): Int = nativeStart(name, address)
     fun stop() = nativeStop()
     fun isRunning(): Boolean = nativeIsRunning()
     fun setVideoSink(sink: VideoSink?) = nativeSetSink(sink)
@@ -24,7 +24,7 @@ object AirPlayNative {
         connectionListener?.invoke()
     }
 
-    @JvmStatic private external fun nativeStart(): Int
+    @JvmStatic private external fun nativeStart(name: String, address: ByteArray): Int
     @JvmStatic private external fun nativeStop()
     @JvmStatic private external fun nativeIsRunning(): Boolean
     @JvmStatic private external fun nativeSetSink(sink: VideoSink?)

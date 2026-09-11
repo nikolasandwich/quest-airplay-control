@@ -1,69 +1,31 @@
-# localair
+# Quest AirPlay and Mouse
 
-A small, native AirPlay 2 mirroring receiver for Android TV / Android-based
-projectors. No ads, no telemetry, no account, ~10 MB APK.
+Quest 3 Android AirPlay receiver with service-owned BLE HID mouse controls, based on [localair](https://github.com/phoria-sam-tg/localair).
 
-Built because every app-store AirPlay receiver for Android TV is either
-adware, paywalled, or both — and the underlying protocol stack
-([RPiPlay](https://github.com/FD-/RPiPlay)) has been freely available for
-years. localair is a thin Kotlin shell around RPiPlay's RTSP / FairPlay /
-mirror code, plus a `MediaCodec` decode path that renders straight to a
-`SurfaceView`.
+## Stable version: 0.2.1
 
-## Status
+- AirPlay video reception, surface lifecycle recovery, and audio decode/output path.
+- Integrated BLE mouse connection, explicit enable/pause, progressive vertical scrolling, horizontal mouse drags, and clicks at the current iPad pointer.
+- Serialized codec teardown and native worker shutdown before clock destruction.
+- Waiting overlay clears when a real video buffer has been confirmed.
 
-| Feature                       | State        |
-| ----------------------------- | ------------ |
-| AirPlay 2 pairing handshake   | ✅ working    |
-| FairPlay v2 (`/fp-setup`)     | ✅ working    |
-| Mirror SETUP / RECORD         | ✅ working    |
-| H.264 video → MediaCodec      | ✅ working    |
-| AAC-ELD audio → AudioTrack    | ⏳ stubbed    |
-| Tested hardware               | Xiaomi MiProjL1 (Android 9 / armv7) |
+Ray-to-iPad absolute pointer positioning is not implemented in this stable version. Horizontal drags are mouse gestures; page behavior depends on the target iPad app. Audio quality and all foreground/background combinations have not been exhaustively validated.
 
-## Architecture
-
-```
-┌────────────── :app (Kotlin) ──────────────┐
-│  MainActivity  → SurfaceView + waiting UI │
-│  AirPlayService→ foreground svc, mDNS     │
-│  MdnsAdvertiser→ NsdManager _airplay/_raop│
-│  VideoDecoder  → MediaCodec → Surface     │
-└─────────────────┬─────────────────────────┘
-                  │  JNI
-┌─────────────────▼─────────────────────────┐
-│              :airplay (C/C++)              │
-│  jni_bridge.cpp  raop_init / raop_start    │
-│  video_sink.cpp  NAL → JNI callback        │
-│  dnssd_stub.c    no-op libdns_sd shim      │
-│                                            │
-│  third_party/RPiPlay/lib  (RTSP, FairPlay, │
-│                            mirror buffer)  │
-│  third_party/libplist     (in-tree build)  │
-│  com.android.ndk.thirdparty:openssl (AAR)  │
-└────────────────────────────────────────────┘
-```
-
-The Kotlin layer never touches RTSP or crypto — it just owns the Surface
-and feeds NAL units it gets from the JNI bridge into MediaCodec. mDNS is
-done in Kotlin via `NsdManager`, replacing RPiPlay's libdns_sd-based
-`dnssd.c` with a minimal stub (`dnssd_stub.c`) that satisfies the API.
+See [0.2.1 validation](verification/release-0.2.1.md) and [0.2.0 integration validation](verification/release-0.2.0.md) for evidence and limitations. Build and lint passed; 19 Android instrumentation tests passed without generating real mouse input.
 
 ## Build
 
-Requires JDK 21 (Temurin recommended), Android SDK 35, NDK r27, CMake 3.22.
+Requires JDK 17, Android SDK 35, Build Tools 36.0.0, NDK 27.2.12479018, and CMake 3.22.1. The native target is arm64-v8a. On Windows, run dependency setup with Git Bash and use `gradlew.bat` for Gradle.
 
 ```sh
-./setup-deps.sh                           # clone RPiPlay + libplist
-cp local.properties.example local.properties   # then edit sdk.dir
-./gradlew :app:assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./setup-deps.sh
+cp local.properties.example local.properties # edit sdk.dir for your machine
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
-If you don't have a wireless ADB pairing UI on your Android TV
-(common on older Xiaomi / FengOS builds), enabling **Developer options →
-USB debugging** and rebooting once is usually enough — `adb connect <ip>:5555`
-will then accept after you confirm the RSA prompt on the TV.
+`setup-deps.sh` pins RPiPlay and libplist to the tested revisions and idempotently applies [the native lifecycle patch](patches/RPiPlay-quest-lifecycle.patch). Existing dependencies at other revisions are left untouched and reported as an error. Dependency checkouts, local SDK paths, APKs, raw device logs, and Bluetooth preference backups are excluded from this repository.
+
+The Android package is `com.questlab.airplayreceiver`, versionCode 8. Installing or restarting it interrupts the active AirPlay session; schedule device validation with the user. The earlier standalone HID app is retained for rollback and should not run its GATT service concurrently.
 
 ## Licensing
 

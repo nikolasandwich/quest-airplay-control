@@ -1,0 +1,138 @@
+diff --git a/lib/raop.c b/lib/raop.c
+index 4523a2c..991b1b4 100755
+--- a/lib/raop.c
++++ b/lib/raop.c
+@@ -205,6 +205,9 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
+             conn->raop_rtp = NULL;
+             raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
+             conn->raop_rtp_mirror = NULL;
++            if (conn->raop->callbacks.video_session_end) {
++                conn->raop->callbacks.video_session_end(conn->raop->callbacks.cls, conn->raop_ntp);
++            }
+         }
+     }
+     if (handler != NULL) {
+@@ -224,13 +227,7 @@ conn_destroy(void *ptr) {
+ 
+     logger_log(conn->raop->logger, LOGGER_INFO, "Destroying connection");
+ 
+-    if (conn->raop->callbacks.conn_destroy) {
+-        conn->raop->callbacks.conn_destroy(conn->raop->callbacks.cls);
+-    }
+-
+-    if (conn->raop_ntp) {
+-        raop_ntp_destroy(conn->raop_ntp);
+-    }
++    /* RTP workers dereference ntp until they have joined. Keep their clock alive. */
+     if (conn->raop_rtp) {
+         /* This is done in case TEARDOWN was not called */
+         raop_rtp_destroy(conn->raop_rtp);
+@@ -238,6 +235,15 @@ conn_destroy(void *ptr) {
+     if (conn->raop_rtp_mirror) {
+         /* This is done in case TEARDOWN was not called */
+         raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
++        if (conn->raop->callbacks.video_session_end) {
++            conn->raop->callbacks.video_session_end(conn->raop->callbacks.cls, conn->raop_ntp);
++        }
++    }
++    if (conn->raop_ntp) {
++        raop_ntp_destroy(conn->raop_ntp);
++    }
++    if (conn->raop->callbacks.conn_destroy) {
++        conn->raop->callbacks.conn_destroy(conn->raop->callbacks.cls);
+     }
+ 
+     conn->raop->callbacks.video_flush(conn->raop->callbacks.cls);
+@@ -377,4 +383,4 @@ void
+ raop_stop(raop_t *raop) {
+     assert(raop);
+     httpd_stop(raop->httpd);
+-}
+\ No newline at end of file
++}
+diff --git a/lib/raop.h b/lib/raop.h
+index cfd703e..e642dba 100755
+--- a/lib/raop.h
++++ b/lib/raop.h
+@@ -40,6 +40,8 @@ struct raop_callbacks_s {
+     /* Optional but recommended callback functions */
+     void  (*conn_init)(void *cls);
+     void  (*conn_destroy)(void *cls);
++    /* Optional: called after a video's producer has joined, while ntp is alive. */
++    void  (*video_session_end)(void *cls, raop_ntp_t *ntp);
+     void  (*audio_flush)(void *cls);
+     void  (*video_flush)(void *cls);
+     void  (*audio_set_volume)(void *cls, float volume);
+diff --git a/lib/raop_ntp.c b/lib/raop_ntp.c
+index 2aadde0..0705259 100644
+--- a/lib/raop_ntp.c
++++ b/lib/raop_ntp.c
+@@ -383,7 +383,7 @@ raop_ntp_stop(raop_ntp_t *raop_ntp)
+     /* Check that we are running and thread is not
+      * joined (should never be while still running) */
+     MUTEX_LOCK(raop_ntp->run_mutex);
+-    if (!raop_ntp->running || raop_ntp->joined) {
++    if (raop_ntp->joined) {
+         MUTEX_UNLOCK(raop_ntp->run_mutex);
+         return;
+     }
+@@ -396,13 +396,13 @@ raop_ntp_stop(raop_ntp_t *raop_ntp)
+     COND_SIGNAL(raop_ntp->wait_cond);
+     MUTEX_UNLOCK(raop_ntp->wait_mutex);
+ 
++    THREAD_JOIN(raop_ntp->thread);
++
+     if (raop_ntp->tsock != -1) {
+         closesocket(raop_ntp->tsock);
+         raop_ntp->tsock = -1;
+     }
+ 
+-    THREAD_JOIN(raop_ntp->thread);
+-
+     logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp stopped time thread");
+ 
+     /* Mark thread as joined */
+diff --git a/lib/raop_rtp.c b/lib/raop_rtp.c
+index d31cfef..0137aa7 100755
+--- a/lib/raop_rtp.c
++++ b/lib/raop_rtp.c
+@@ -665,7 +665,7 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
+     /* Check that we are running and thread is not
+      * joined (should never be while still running) */
+     MUTEX_LOCK(raop_rtp->run_mutex);
+-    if (!raop_rtp->running || raop_rtp->joined) {
++    if (raop_rtp->joined) {
+         MUTEX_UNLOCK(raop_rtp->run_mutex);
+         return;
+     }
+diff --git a/lib/raop_rtp_mirror.c b/lib/raop_rtp_mirror.c
+index 2040d7e..5eb2644 100755
+--- a/lib/raop_rtp_mirror.c
++++ b/lib/raop_rtp_mirror.c
+@@ -469,21 +469,22 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
+     /* Check that we are running and thread is not
+      * joined (should never be while still running) */
+     MUTEX_LOCK(raop_rtp_mirror->run_mutex);
+-    if (!raop_rtp_mirror->running || raop_rtp_mirror->joined) {
++    if (raop_rtp_mirror->joined) {
+         MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
+         return;
+     }
+     raop_rtp_mirror->running = 0;
+     MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
+ 
++    /* Join the thread */
++    THREAD_JOIN(raop_rtp_mirror->thread_mirror);
++
++    /* The worker polls with a timeout; don't close/change its fd while in use. */
+     if (raop_rtp_mirror->mirror_data_sock != -1) {
+         closesocket(raop_rtp_mirror->mirror_data_sock);
+         raop_rtp_mirror->mirror_data_sock = -1;
+     }
+ 
+-    /* Join the thread */
+-    THREAD_JOIN(raop_rtp_mirror->thread_mirror);
+-
+     /* Mark thread as joined */
+     MUTEX_LOCK(raop_rtp_mirror->run_mutex);
+     raop_rtp_mirror->joined = 1;

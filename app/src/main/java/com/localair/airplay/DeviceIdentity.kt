@@ -20,7 +20,7 @@ object DeviceIdentity {
 
     fun deviceName(context: Context): String {
         val prefs = context.getSharedPreferences("localair", Context.MODE_PRIVATE)
-        return prefs.getString("device_name", null) ?: Build.MODEL ?: "localair"
+        return prefs.getString("device_name", null) ?: "Quest AirPlay Lab"
     }
 
     private fun networkInterfaceMac(ifName: String): String? = runCatching {

@@ -40,6 +40,14 @@ class MdnsAdvertiser(context: Context) {
             serviceName = "${deviceId.replace(":", "")}@$name"
             serviceType = "_raop._tcp"
             setPort(port)
+            // Match the audio format discovery fields published by RPiPlay.
+            setAttribute("txtvers", "1")
+            setAttribute("ch", "2")
+            setAttribute("sr", "44100")
+            setAttribute("ss", "16")
+            setAttribute("pw", "false")
+            setAttribute("sv", "false")
+            setAttribute("rhd", "5.6.0.0")
             setAttribute("cn", "0,1,2,3")
             setAttribute("da", "true")
             setAttribute("et", "0,3,5")

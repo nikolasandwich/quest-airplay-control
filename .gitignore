@@ -13,3 +13,4 @@ third_party/libplist/
 # OS / editor
 .DS_Store
 *.swp
+verification/*.generated.c

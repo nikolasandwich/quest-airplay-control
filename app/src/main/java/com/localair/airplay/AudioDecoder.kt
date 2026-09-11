@@ -29,6 +29,7 @@ class AudioDecoder : AudioSink {
     private var received = 0L
     private var rendered = 0L
 
+    private val availableInputs = java.util.ArrayDeque<Int>()
     private val pending = ConcurrentLinkedQueue<Pair<ByteArray, Long>>()
     private val codecThread = HandlerThread("AudioDecoder").apply { start() }
     private val codecHandler = Handler(codecThread.looper)
@@ -69,6 +70,7 @@ class AudioDecoder : AudioSink {
 
     fun release() {
         codecHandler.post {
+            availableInputs.clear()
             codec?.runCatching { stop(); release() }
             codec = null
         }
@@ -83,20 +85,37 @@ class AudioDecoder : AudioSink {
         received++
         if (received == 1L) {
             Log.i(TAG, "first AAC frame: ${data.size}B")
-            codecHandler.post { lazyStart() }
+            codecHandler.post {
+                runCatching { lazyStart() }.onFailure { Log.e(TAG, "audio initialization failed", it) }
+            }
         }
         pending.offer(data to ptsUs)
+        codecHandler.post { drainInputs() }
+    }
+
+    private fun drainInputs() {
+        val c = codec ?: return
+        while (availableInputs.isNotEmpty()) {
+            val (frame, pts) = pending.poll() ?: return
+            val idx = availableInputs.removeFirst()
+            try {
+                val buf = c.getInputBuffer(idx) ?: error("Missing audio buffer")
+                require(frame.size <= buf.capacity()) { "Audio packet exceeds input capacity" }
+                buf.clear(); buf.put(frame)
+                c.queueInputBuffer(idx, 0, frame.size, pts, 0)
+            } catch (e: Exception) {
+                Log.e(TAG, "audio input failed", e)
+                availableInputs.clear()
+                return
+            }
+        }
     }
 
     private val callback = object : MediaCodec.Callback() {
         override fun onInputBufferAvailable(c: MediaCodec, idx: Int) {
-            val (frame, pts) = pending.poll() ?: run {
-                c.queueInputBuffer(idx, 0, 0, 0, 0)
-                return
-            }
-            val buf = c.getInputBuffer(idx) ?: return
-            buf.clear(); buf.put(frame)
-            c.queueInputBuffer(idx, 0, frame.size, pts, 0)
+            if (c !== codec) return
+            availableInputs.addLast(idx)
+            drainInputs()
         }
 
         override fun onOutputBufferAvailable(c: MediaCodec, idx: Int, info: MediaCodec.BufferInfo) {

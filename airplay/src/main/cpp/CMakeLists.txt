@@ -8,6 +8,10 @@ set(RPIPLAY_ROOT ${CMAKE_SOURCE_DIR}/../../../../third_party/RPiPlay)
 set(RPIPLAY_LIB ${RPIPLAY_ROOT}/lib)
 set(LIBPLIST_ROOT ${CMAKE_SOURCE_DIR}/../../../../third_party/libplist)
 
+if(NOT EXISTS ${RPIPLAY_LIB}/raop.c OR NOT EXISTS ${LIBPLIST_ROOT}/src/plist.c)
+    message(FATAL_ERROR "Quest prototype requires real RPiPlay and libplist sources; stub builds are disabled")
+endif()
+
 #
 # OpenSSL via Google's prefab AAR (com.android.ndk.thirdparty:openssl).
 # AGP's prefab feature makes headers + per-ABI .so available under the
@@ -37,7 +41,6 @@ if(EXISTS ${LIBPLIST_ROOT}/src/plist.c)
         ${LIBPLIST_ROOT}/src/out-plutil.c
         ${LIBPLIST_ROOT}/src/time64.c
         ${LIBPLIST_ROOT}/src/jsmn.c
-        ${LIBPLIST_ROOT}/libcnary/cnary.c
         ${LIBPLIST_ROOT}/libcnary/node.c
         ${LIBPLIST_ROOT}/libcnary/node_list.c
     )
@@ -109,4 +112,4 @@ endif()
 
 find_library(log-lib log)
 find_library(android-lib android)
-target_link_libraries(airplay_native PRIVATE ${log-lib} ${android-lib})
+target_link_libraries(airplay_native PRIVATE ${log-lib} ${android-lib} c++_shared)

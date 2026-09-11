@@ -6,11 +6,13 @@ plugins {
 android {
     namespace = "com.localair.airplay.nativebridge"
     compileSdk = 35
+    buildToolsVersion = "36.0.0"
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         minSdk = 28
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            abiFilters += listOf("arm64-v8a")
         }
         externalNativeBuild {
             cmake {

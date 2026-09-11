@@ -2,6 +2,7 @@
 #include <android/log.h>
 #include <cstdint>
 #include <cstring>
+#include <mutex>
 
 #include "video_sink.h"
 #include "audio_sink.h"
@@ -25,12 +26,25 @@ jmethodID g_onConnInit  = nullptr;
 #if HAVE_RPIPLAY
 raop_t*  g_raop  = nullptr;
 dnssd_t* g_dnssd = nullptr;
+std::mutex g_videoSessionMutex;
+raop_ntp_t* g_videoOwner = nullptr;
 
 void audio_process(void*, raop_ntp_t*, aac_decode_struct* data) {
     localair::dispatchAac(data->data, data->data_len, static_cast<int64_t>(data->pts));
 }
-void video_process(void*, raop_ntp_t*, h264_decode_struct* data) {
+void video_process(void*, raop_ntp_t* owner, h264_decode_struct* data) {
+    std::lock_guard<std::mutex> lock(g_videoSessionMutex);
+    if (g_videoOwner != owner) {
+        localair::dispatchSessionEnd();
+        g_videoOwner = owner;
+    }
     localair::dispatchNal(data->data, data->data_len, static_cast<int64_t>(data->pts));
+}
+void video_session_end(void*, raop_ntp_t* owner) {
+    std::lock_guard<std::mutex> lock(g_videoSessionMutex);
+    if (g_videoOwner != owner) return;
+    g_videoOwner = nullptr;
+    localair::dispatchSessionEnd();
 }
 void conn_init(void*) {
     LOGI("client connected");
@@ -46,7 +60,6 @@ void conn_init(void*) {
 }
 void conn_destroy(void*) {
     LOGI("client disconnected");
-    localair::dispatchSessionEnd();
 }
 void audio_flush(void*)  {}
 void video_flush(void*)  {}
@@ -61,13 +74,14 @@ void log_callback(void*, int level, const char* msg) {
 } // namespace
 
 extern "C" JNIEXPORT jint JNICALL
-Java_com_localair_airplay_nativebridge_AirPlayNative_nativeStart(JNIEnv*, jclass) {
+Java_com_localair_airplay_nativebridge_AirPlayNative_nativeStart(JNIEnv* env, jclass, jstring name, jbyteArray address) {
 #if HAVE_RPIPLAY
     raop_callbacks_t cbs{};
     cbs.audio_process      = audio_process;
     cbs.video_process      = video_process;
     cbs.conn_init          = conn_init;
     cbs.conn_destroy       = conn_destroy;
+    cbs.video_session_end  = video_session_end;
     cbs.audio_flush        = audio_flush;
     cbs.video_flush        = video_flush;
     cbs.audio_set_volume   = audio_set_volume;
@@ -81,9 +95,16 @@ Java_com_localair_airplay_nativebridge_AirPlayNative_nativeStart(JNIEnv*, jclass
 
     // dnssd_stub.c implements this API as a no-op store for name + hw_addr.
     // Kotlin (NsdManager) handles actual Bonjour advertising.
-    static const char hw_addr[6] = {(char)0xAA,(char)0xBB,(char)0xCC,(char)0xDD,(char)0xEE,(char)0xFF};
+    if (!name || !address || env->GetArrayLength(address) != 6) {
+        raop_destroy(g_raop); g_raop = nullptr; return 0;
+    }
+    char hw_addr[6];
+    env->GetByteArrayRegion(address, 0, 6, reinterpret_cast<jbyte*>(hw_addr));
+    const char* receiver_name = env->GetStringUTFChars(name, nullptr);
+    if (!receiver_name) { raop_destroy(g_raop); g_raop = nullptr; return 0; }
     int err = 0;
-    g_dnssd = dnssd_init("localair", 8, hw_addr, 6, &err);
+    g_dnssd = dnssd_init(receiver_name, strlen(receiver_name), hw_addr, 6, &err);
+    env->ReleaseStringUTFChars(name, receiver_name);
     if (!g_dnssd) { LOGE("dnssd_init failed: %d", err); raop_destroy(g_raop); g_raop = nullptr; return 0; }
     raop_set_dnssd(g_raop, g_dnssd);
 
