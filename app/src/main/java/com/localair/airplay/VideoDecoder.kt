@@ -41,6 +41,8 @@ class VideoDecoder(
     private var sps: ByteArray? = null
     private var pps: ByteArray? = null
     @Volatile var hasFrames = false; private set
+    @Volatile private var confirmedSurfaceOwner: Any? = null
+    fun hasFramesFor(owner: Any?) = owner != null && confirmedSurfaceOwner === owner && hasFrames
     @Volatile private var rendered = 0L
     @Volatile private var fed = 0L
 
@@ -90,6 +92,7 @@ class VideoDecoder(
     }
 
     private fun setHasFrames(value: Boolean) {
+        confirmedSurfaceOwner = if (value) target?.owner else null
         if (hasFrames != value) { hasFrames = value; onFramesChanged(value) }
     }
 

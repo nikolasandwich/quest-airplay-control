@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var surfaceView: SurfaceView
     private lateinit var waiting: TextView
     private var surfaceReady = false
+    private var rebuildSurfaceOnResume = false
     private var surfaceOwner: Any? = null
     private val inputOwner = Any()
     private var attachedHid: HidController? = null
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         controlButton = action(primary, "启用控制") { svc?.hid?.toggleArmed(); updateHidUi() }
         previousButton = action(primary, "上一条") { svc?.hid?.scrollPage(1) }
         nextButton = action(primary, "下一条") { svc?.hid?.scrollPage(-1) }
+        action(primary, "采样3秒") { startPointerObservation() }
         leftButton = action(pointer, "左滑（拖拽）") { svc?.hid?.dragPointer(-1) }
         clickButton = action(pointer, "点击当前指针") { svc?.hid?.clickPointer() }
         rightButton = action(pointer, "右滑（拖拽）") { svc?.hid?.dragPointer(1) }
@@ -124,12 +126,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
         rayButton.setOnLongClickListener {
-            if (surfaceReady && svc?.video?.hasFrames == true && hasWindowFocus()) {
-                val started = pointerObservation.start(surfaceView.holder.surface,surfaceView.width,surfaceView.height) { message ->
-                    if (!isDestroyed) android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show()
-                }
-                android.widget.Toast.makeText(this,if (started) "只读采样约3秒，请手动移动指针" else "采样未开始",android.widget.Toast.LENGTH_SHORT).show()
-            }
+            startPointerObservation()
             true
         }
         setContentView(root)
@@ -143,6 +140,21 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         androidx.core.content.ContextCompat.registerReceiver(this, framesReceiver, IntentFilter(AirPlayService.ACTION_FRAMES_CHANGED), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         attachControlsWhenReady()
+    }
+
+    private fun startPointerObservation() {
+        val ready = surfaceReady && svc?.video?.hasFrames == true && hasWindowFocus()
+        android.util.Log.i("PointerObservation", "User requested capture: surface=$surfaceReady frames=${svc?.video?.hasFrames} focus=${hasWindowFocus()}")
+        if (!ready) {
+            android.widget.Toast.makeText(this,"未开始：请先恢复投屏并保持应用在前台",android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        val started = pointerObservation.start(surfaceView.holder.surface,surfaceView.width,surfaceView.height) { message ->
+            android.util.Log.i("PointerObservation",message)
+            if (!isDestroyed) android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show()
+        }
+        android.util.Log.i("PointerObservation", "Capture accepted=$started")
+        android.widget.Toast.makeText(this,if (started) "只读采样约3秒，请手动移动指针" else "未开始：采样忙或视频不可用",android.widget.Toast.LENGTH_LONG).show()
     }
 
     private fun attachControlsWhenReady() {
@@ -174,7 +186,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private fun refreshVideoState() {
         if (!::waiting.isInitialized) return
         // Broadcasts are notifications; always read the current service snapshot.
-        waiting.visibility = if (surfaceReady && svc?.video?.hasFrames == true) View.GONE else View.VISIBLE
+        waiting.visibility = if (surfaceReady && svc?.video?.hasFramesFor(surfaceOwner) == true) View.GONE else View.VISIBLE
         if (::rayView.isInitialized) {
             val usable = rayMode && waiting.visibility == View.GONE && attachedHid?.isArmed == true && !isInPictureInPictureMode
             rayView.visibility = if (usable) View.VISIBLE else View.GONE
@@ -211,6 +223,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun onPause() {
+        android.util.Log.i("AirPlayLifecycle", "pause surfaceReady=$surfaceReady")
         pointerObservation.cancel()
         if (::rayView.isInitialized) rayView.resetInput()
         attachedHid?.setFocused(inputOwner, false)
@@ -219,11 +232,48 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onResume() {
         super.onResume()
+        android.util.Log.i("AirPlayLifecycle", "resume rebuild=$rebuildSurfaceOnResume surfaceReady=$surfaceReady")
+        if (rebuildSurfaceOnResume && ::surfaceView.isInitialized) {
+            rebuildSurfaceOnResume = false
+            rebuildVideoSurface()
+        }
         attachedHid?.setFocused(inputOwner, hasWindowFocus())
         refreshVideoState()
     }
 
+    override fun onStop() {
+        // Quest may preserve the Java Surface while replacing its window/layer
+        // during doff/wake. Recreate that layer exactly once on the next resume.
+        rebuildSurfaceOnResume = true
+        android.util.Log.i("AirPlayLifecycle", "stop: display layer will be recreated on return")
+        super.onStop()
+    }
+
+    private fun rebuildVideoSurface() {
+        val old = surfaceView
+        val parent = old.parent as? FrameLayout ?: return
+        val index = parent.indexOfChild(old)
+        val layout = old.layoutParams
+        pointerObservation.cancel()
+        surfaceOwner?.let { svc?.detachSurface(it) }
+        surfaceOwner = null
+        surfaceReady = false
+        rayView.resetInput()
+        rayView.visibility = View.GONE
+        waiting.visibility = View.VISIBLE
+        old.holder.removeCallback(this)
+        parent.removeView(old)
+        surfaceView = SurfaceView(this).apply {
+            holder.setFormat(PixelFormat.OPAQUE)
+            holder.addCallback(this@MainActivity)
+        }
+        parent.addView(surfaceView,index,layout)
+        android.util.Log.i("AirPlayLifecycle", "new video layer created; awaiting fresh holder and buffer")
+    }
+
     override fun surfaceCreated(holder: SurfaceHolder) {
+        if (holder !== surfaceView.holder) return
+        android.util.Log.i("AirPlayLifecycle", "current holder created valid=${holder.surface.isValid}")
         surfaceReady = true
         surfaceOwner = Any()
         attachWhenReady()
@@ -267,6 +317,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        if (holder !== surfaceView.holder) return
+        android.util.Log.i("AirPlayLifecycle", "current holder destroyed")
         pointerObservation.cancel()
         surfaceReady = false
         surfaceOwner?.let { svc?.detachSurface(it) }

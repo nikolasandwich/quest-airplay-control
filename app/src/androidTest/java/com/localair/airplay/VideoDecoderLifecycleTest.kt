@@ -121,6 +121,29 @@ class VideoDecoderLifecycleTest : TestCase() {
         }
     }
 
+    fun testOldFrameConfirmationCannotHideNewSurfaceWaitingState() {
+        val texture = SurfaceTexture(false)
+        val surface = Surface(texture)
+        val oldOwner = Any()
+        val newOwner = Any()
+        try {
+            decoder.attachSurface(oldOwner, surface)
+            onDecoder {
+                setField("hasFrames", true)
+                setField("confirmedSurfaceOwner", oldOwner)
+                assertTrue(decoder.hasFramesFor(oldOwner))
+                decoder.attachSurface(newOwner, surface)
+                // Even before the queued rebind executes, old confirmation is invalid for new UI.
+                assertFalse(decoder.hasFramesFor(newOwner))
+                assertFalse(decoder.hasFramesFor(null))
+            }
+            onDecoder {
+                assertFalse(decoder.hasFramesFor(newOwner))
+                assertFalse(decoder.hasFramesFor(oldOwner))
+            }
+        } finally { surface.release(); texture.release() }
+    }
+
     fun testReleaseIsTerminalEvenWithQueuedData() {
         onDecoder {
             decoder.release()
