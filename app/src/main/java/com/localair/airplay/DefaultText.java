@@ -132,6 +132,13 @@ final class DefaultText {
         if(id==R.string.capture_finished)return "Read-only capture finished: %1$d frames (%2$s)";
         if(id==R.string.app_name)return "Quest Mirror & Mouse";
         if(id==R.string.ui_language)return "en";
+        if(id==R.string.language_settings)return "Language";
+        if(id==R.string.follow_system)return "Follow system";
+        if(id==R.string.language_english)return "English";
+        if(id==R.string.language_german)return "Deutsch";
+        if(id==R.string.language_french)return "Français";
+        if(id==R.string.language_chinese)return "简体中文";
+        if(id==R.string.apply_language)return "Apply";
         throw new IllegalArgumentException("Unknown text resource: "+id);
     }
 }

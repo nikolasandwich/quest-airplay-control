@@ -123,6 +123,10 @@ class AirPlayService : Service() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        refreshLanguage()
+    }
+
+    fun refreshLanguage(){
         AppText.initialize(this)
         hid.refreshLanguage()
         startInForeground(hid.permitted())

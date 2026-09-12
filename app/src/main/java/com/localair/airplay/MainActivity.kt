@@ -252,9 +252,29 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             .setPositiveButton(AppText.get(R.string.restore_direct_control)){_,_ ->
                 pendingControlRestore=true
             }
+            .setNeutralButton(AppText.get(R.string.language_settings)){_,_ -> showLanguageSettings()}
             .setNegativeButton(AppText.get(R.string.close),null).create()
         dialog.setOnDismissListener {window.decorView.post { restoreWhenFocused() }}
         dialog.show()
+    }
+    private fun showLanguageSettings(){
+        val tags=arrayOf("","en","de","fr","zh-CN")
+        val names=arrayOf(AppText.get(R.string.follow_system),AppText.get(R.string.language_english),AppText.get(R.string.language_german),AppText.get(R.string.language_french),AppText.get(R.string.language_chinese))
+        var selected=tags.indexOf(AppText.selection(this)).coerceAtLeast(0)
+        android.app.AlertDialog.Builder(this)
+            .setTitle(AppText.get(R.string.language_settings))
+            .setSingleChoiceItems(names,selected){_,which -> selected=which}
+            .setPositiveButton(AppText.get(R.string.apply_language)){_,_ ->
+                if(tags[selected]!=AppText.selection(this)){
+                    pendingControlRestore=false
+                    attachedHid?.disarm()
+                    rayView.resetInput()
+                    AppText.setLanguage(this,tags[selected])
+                    svc?.refreshLanguage()
+                    recreate()
+                }
+            }
+            .setNegativeButton(AppText.get(R.string.close),null).show()
     }
     private fun restoreWhenFocused(){
         if(!pendingControlRestore || !hasWindowFocus())return

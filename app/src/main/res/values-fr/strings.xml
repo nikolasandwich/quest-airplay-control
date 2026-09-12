@@ -129,4 +129,11 @@
     <string name="capture_finished">"Capture en lecture seule terminée : %1$d images (%2$s)"</string>
     <string name="app_name">"Quest Mirror &amp; Mouse"</string>
     <string name="ui_language">fr</string>
+    <string name="language_settings">"Langue / Language"</string>
+    <string name="follow_system">"Langue du système"</string>
+    <string name="language_english">"English"</string>
+    <string name="language_german">"Deutsch"</string>
+    <string name="language_french">"Français"</string>
+    <string name="language_chinese">"简体中文"</string>
+    <string name="apply_language">"Appliquer"</string>
 </resources>

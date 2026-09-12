@@ -129,4 +129,11 @@
     <string name="capture_finished">"只读采样结束：%1$d 帧（%2$s）"</string>
     <string name="app_name">"Quest 投屏与鼠标"</string>
     <string name="ui_language">zh-CN</string>
+    <string name="language_settings">"语言 / Language"</string>
+    <string name="follow_system">"跟随系统"</string>
+    <string name="language_english">"English"</string>
+    <string name="language_german">"Deutsch"</string>
+    <string name="language_french">"Français"</string>
+    <string name="language_chinese">"简体中文"</string>
+    <string name="apply_language">"应用"</string>
 </resources>
