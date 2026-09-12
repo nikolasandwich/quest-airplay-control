@@ -26,6 +26,8 @@ public final class PointerCalibration {
     private long firstInput=-1,lastInput=-1,lastSignificantInput=-1,stableSince=-1,latestAt=-1,started,lastUpdate,interval=300000;
     public String status="尚未校准";
     public boolean isActive(){return active;}
+    public int stage(){return step;}
+    public boolean hasBaseline(){return baseline;}
     public boolean awaitingReference(){return active&&step==10;}
     public boolean hasGain(){return gain!=null;}
     public Gain gain(){return active?null:gain;}

@@ -207,9 +207,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         hidStatus.text = hid.statusText()
         if (rayMode && hid.isArmed) hidStatus.text = "相对射线：移动射线带动指针 · 扳机/确认键点击当前指针（非绝对定位）"
         if (rayAlignment.enabled) hidStatus.text = "停稳对齐（实验）：${rayAlignment.status} · 不自动点击"
-        if(rayAlignment.calibration.isActive)hidStatus.text=rayAlignment.status
+        if(rayAlignment.calibration.isActive)hidStatus.text="校准进行中，自动对齐暂停 · ${rayAlignment.status}"
         else if(hid.isArmed&&rayAlignment.calibration.status!="尚未校准")hidStatus.text=rayAlignment.calibration.status + if(rayAlignment.enabled) " · ${rayAlignment.status}" else ""
-        alignButton.text = if (rayAlignment.enabled) "停稳对齐：开" else "停稳对齐：关"
+        alignButton.text = if(rayAlignment.calibration.isActive)"退出校准并对齐" else if (rayAlignment.enabled) "停稳对齐：开" else "停稳对齐：关"
         rayButton.text = if (rayMode) "相对射线：开" else "相对射线：关"
         controlButton.text = if (hid.isArmed) "暂停控制" else "启用控制"
         val actionsAllowed=hid.isArmed&&!rayAlignment.calibration.isActive
@@ -224,7 +224,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private fun showCalibration(){
         val calibration=rayAlignment.calibration
         val dialog=android.app.AlertDialog.Builder(this)
-            .setTitle("校准位置与移动速度")
+            .setTitle("iPad 底板：${svc?.calibrationBoard?.address() ?: "服务尚未就绪"}")
             .setSingleChoiceItems(arrayOf("每3分钟复核可靠样本","每5分钟复核可靠样本（默认）"),if(calibration.intervalMinutes()==3)0 else 1){_,which ->
                 calibration.intervalMinutes(if(which==0)3 else 5)
                 getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putInt("calibration_minutes",calibration.intervalMinutes()).apply()

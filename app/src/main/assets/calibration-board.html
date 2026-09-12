@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>Quest 校准底板</title>
+  <style>
+    * { box-sizing: border-box; cursor: default; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #f2f2f2; }
+    body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+    main { position: fixed; inset: 0; background: #f2f2f2; }
+    .guide { position: absolute; width: 72px; height: 72px; border-color: #d6d6d6; border-style: solid; border-width: 0; pointer-events: none; }
+    .tl { top: 10%; left: 10%; border-top-width: 3px; border-left-width: 3px; }
+    .tr { top: 10%; right: 10%; border-top-width: 3px; border-right-width: 3px; }
+    .bl { bottom: 10%; left: 10%; border-bottom-width: 3px; border-left-width: 3px; }
+    .br { bottom: 10%; right: 10%; border-bottom-width: 3px; border-right-width: 3px; }
+    header { position: absolute; top: 3%; left: 8%; right: 8%; text-align: center; pointer-events: none; font-family: system-ui,sans-serif; color: #333; }
+    h1 { margin: 0 0 6px; font-size: clamp(25px,3.5vw,44px); font-weight: 600; }
+    p { margin: 4px 0; font-size: clamp(18px,2.2vw,28px); }
+    #progress { color: #666; }
+    #target { position: absolute; width: 128px; height: 128px; border: 3px solid #7292ad; border-radius: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+    footer { position: absolute; bottom: 3%; left: 8%; right: 8%; text-align: center; color:#666; font: 20px system-ui,sans-serif; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <main aria-label="校准底板。请保持此页投屏，在 Quest 上开始校准，在边缘标记内按提示移动真实指针。">
+    <header><h1 id="title">等待头显开始校准</h1><p id="instruction">在 Quest 点“校准”，然后开始。中央保持空白。</p><p id="progress">正在连接头显步骤…</p></header>
+    <div class="guide tl" aria-hidden="true"></div><div class="guide tr" aria-hidden="true"></div>
+    <div class="guide bl" aria-hidden="true"></div><div class="guide br" aria-hidden="true"></div>
+    <div id="target" style="left:50%;top:55%" aria-hidden="true"></div>
+    <footer id="status">目标随头显步骤更新；请按提示移动真实指针，不需要点击目标。</footer>
+  </main>
+  <script>
+    const title=document.getElementById('title'), instruction=document.getElementById('instruction'),
+      progress=document.getElementById('progress'), status=document.getElementById('status'), target=document.getElementById('target');
+    const labels=['向右缓慢移动','向左缓慢移动','向下缓慢移动','向上缓慢移动','向右以常用较快速度移动','向左以常用较快速度移动','向下以常用较快速度移动','向上以常用较快速度移动','缓慢向右下方移动 · 独立验证','以常用速度向右上方移动 · 独立验证'];
+    const vectors=[[1,0],[-1,0],[0,1],[0,-1],[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1]];
+    let pointer=null, key='', current=null;
+    function place(s){
+      const w=innerWidth,h=innerHeight;
+      let x=w*.5,y=h*.55;
+      if(s.active&&s.baseline&&s.stage<10&&pointer){
+        const d=Math.min(w,h)*.14, v=vectors[s.stage];x=pointer.x+v[0]*d;y=pointer.y+v[1]*d;
+      }
+      target.style.left=Math.max(w*.2,Math.min(w*.8,x))+'px';
+      target.style.top=Math.max(h*.38,Math.min(h*.78,y))+'px';
+      target.hidden=s.stage===10&&s.active || s.done;
+    }
+    addEventListener('pointermove',e=>{const first=!pointer;pointer={x:e.clientX,y:e.clientY};if(first&&current)place(current);},{passive:true});
+    addEventListener('resize',()=>{key='';pointer=null;});
+    async function poll(){
+      try{
+        const r=await fetch('/state',{cache:'no-store'});if(!r.ok)throw Error('unavailable');
+        const s=await r.json();current=s;
+        const next=[s.session,s.active,s.stage,s.baseline,s.done].join(':');if(next!==key){key=next;place(s);}
+        progress.textContent=s.active?'进度 '+Math.min(s.stage+1,10)+' / 10 · 与头显同步':s.done?'校准已完成':'尚未开始或本轮已结束';
+        if(s.active&&s.ageMs>2500){title.textContent='等待头显恢复观察';instruction.textContent='先停稳，查看头显中的连接或识别提示。';}
+        else if(s.active&&s.stage===10){title.textContent='最后确认位置';instruction.textContent='在 Quest 指向真实指针尖端，按确认；只确认本地校准。';}
+        else if(s.active&&!s.baseline){title.textContent='先建立可靠起点';instruction.textContent='将指针移到中央空白区域，停稳片刻，等待下一目标。';}
+        else if(s.active){title.textContent=labels[s.stage];instruction.textContent='沿该方向向圆环内移动，然后停稳；步骤以头显验证结果推进。';}
+        else {title.textContent=s.done?'校准完成':'等待头显开始校准';instruction.textContent=s.done?'可返回日常画面使用；不需要点击底板。':'在 Quest 点“校准”，然后开始。';}
+        status.textContent=s.status;
+      }catch(e){title.textContent='暂未连接到头显步骤';progress.textContent='不会自动推进';status.textContent='保持 Quest 应用打开，检查本地连接后等待恢复。';}
+      setTimeout(poll,250);
+    }
+    poll();
+  </script>
+</body>
+</html>

@@ -18,6 +18,7 @@ import com.localair.airplay.nativebridge.AirPlayNative
 
 class AirPlayService : Service() {
     lateinit var hid: HidController; private set
+    var calibrationBoard: CalibrationBoardServer? = null; private set
 
     private var multicastLock: WifiManager.MulticastLock? = null
     private lateinit var mdns: MdnsAdvertiser
@@ -50,6 +51,7 @@ class AirPlayService : Service() {
         hid = HidController(this)
         instance = this
         startInForeground(hid.permitted())
+        try{calibrationBoard=CalibrationBoardServer(this)}catch(e:Exception){Log.w("CalibrationBoard","Board unavailable",e)}
         acquireMulticastLock()
         startReceiver()
         scheduleHealthCheck()
@@ -60,6 +62,7 @@ class AirPlayService : Service() {
         instance = null
         handler.removeCallbacksAndMessages(null)
         hid.stop()
+        calibrationBoard?.close()
         if (::mdns.isInitialized) mdns.unregister()
         AirPlayNative.setVideoSink(null)
         AirPlayNative.setAudioSink(null)

@@ -32,7 +32,7 @@ class RayAlignment(
         calibration.confirm(targetX,targetY,SystemClock.uptimeMillis())
         publish(calibration.status)
     }
-    fun cancelCalibration(){calibration.cancel();changed()}
+    fun cancelCalibration(){calibration.cancel();publish(calibration.status);changed()}
     fun rayReport(x:Int,y:Int,time:Long,ok:Boolean){if(!closed)calibration.report(x,y,time,ok)}
     private var epoch = 0
     private var busy = false
@@ -46,10 +46,13 @@ class RayAlignment(
     var enabled = false; private set
     var status = ""; private set
     fun setEnabled(value: Boolean) {
+        // A user's explicit switch to alignment exits the mutually exclusive wizard.
+        if(value && calibration.isActive)calibration.cancel()
         enabled = value
         invalidateTarget()
         main.removeCallbacks(pump)
         if (samplingNeeded()) main.post(pump)
+        AirPlayService.instance?.calibrationBoard?.update(calibration,status)
         changed()
     }
     fun invalidateTarget() { epoch++; targetX=Double.NaN; targetY=Double.NaN; identity.reset(); policy.reset(); calibration.invalidateSegment(); status="请移动射线识别真实指针" }
@@ -62,6 +65,7 @@ class RayAlignment(
     }
     private fun publish(value: String) {
         status=value
+        AirPlayService.instance?.calibrationBoard?.update(calibration,value)
         if(value!=lastState){
             lastState=value
             android.util.Log.i("RayAlignment","state target=${policy.targetRevision} reason=$value")
@@ -90,6 +94,7 @@ class RayAlignment(
             if (w<20 || h<20 || !surface.holder.surface.isValid) { invalidateTarget(); schedule();return }
             val bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
             val requestTime=SystemClock.uptimeMillis(); val generation=epoch
+            val calibrationRegion=calibration.isActive
             busy=true
             try {
                 PixelCopy.request(surface.holder.surface,bitmap,{ code ->
@@ -97,7 +102,7 @@ class RayAlignment(
                     val matches=try { if(code==PixelCopy.SUCCESS) {
                         if (pixels.size!=w*h) pixels=IntArray(w*h)
                         bitmap.getPixels(pixels,0,w,0,0,w,h)
-                        detector.detect(pixels,w,h)
+                        detector.detect(pixels,w,h).filter { !calibrationRegion || it.y>=h*.28 && it.y+it.height<=h*.90 }
                     } else emptyList() } catch (e: RuntimeException) {
                         android.util.Log.w("RayAlignment","Pointer detection unavailable",e)
                         emptyList()
