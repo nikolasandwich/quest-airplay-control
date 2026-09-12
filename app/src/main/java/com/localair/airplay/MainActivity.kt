@@ -53,6 +53,23 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var mainPage: View
     private lateinit var chromeLock: Button
     private var chromeHidden=false
+    private var activityResumed=false
+    private val controlGuardHandler=android.os.Handler(android.os.Looper.getMainLooper())
+    private fun inputContextReady()=activityResumed&&!settingsOpen&&!isInPictureInPictureMode&&
+        hasWindowFocus()&&surfaceReady&&svc?.video?.hasFramesFor(surfaceOwner)==true&&
+        getSystemService(android.os.PowerManager::class.java).isInteractive&&
+        window.decorView.display?.state==android.view.Display.STATE_ON
+    private val controlGuard=object:Runnable{
+        override fun run(){
+            if(isDestroyed)return
+            if(!inputContextReady()){
+                pendingControlRestore=false
+                if(attachedHid?.isArmed==true)attachedHid?.disarm()
+                if(::rayView.isInitialized)rayView.resetInput()
+            }
+            controlGuardHandler.postDelayed(this,100)
+        }
+    }
     private var lockHovered=false
     private val hideLock=Runnable {
         if(chromeHidden&&!lockHovered)chromeLock.alpha=0f
@@ -241,6 +258,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         if (hid == null) { hidStatus.postDelayed({ attachControlsWhenReady() }, 100); return }
         attachedHid = hid
         hid.attachUi(inputOwner) { updateHidUi() }
+        hid.setInputContext(inputOwner){inputContextReady()}
         hid.setFocused(inputOwner, hasWindowFocus()&&!settingsOpen)
         updateHidUi()
         refreshVideoState()
@@ -532,6 +550,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     private fun refreshVideoState() {
         if (!::waiting.isInitialized) return
+        if(!inputContextReady()){
+            pendingControlRestore=false
+            if(attachedHid?.isArmed==true)attachedHid?.disarm()
+        }
         // Broadcasts are notifications; always read the current service snapshot.
         waiting.visibility = if (VideoUiState.showWaiting(isInPictureInPictureMode,surfaceReady,svc?.video?.hasFramesFor(surfaceOwner)==true)) View.VISIBLE else View.GONE
         val decision="waiting=${waiting.visibility==View.VISIBLE} pip=$isInPictureInPictureMode ready=$surfaceReady owner=${System.identityHashCode(surfaceOwner)}"
@@ -584,6 +606,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun onPause() {
+        activityResumed=false
+        controlGuardHandler.removeCallbacks(controlGuard)
         pendingControlRestore=false
         if(rayAlignment.calibration.isActive)rayAlignment.cancelCalibration()
         rayAlignment.calibration.externalAction()
@@ -598,6 +622,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onResume() {
         super.onResume()
+        activityResumed=true
+        controlGuardHandler.removeCallbacks(controlGuard)
+        controlGuardHandler.post(controlGuard)
         syncAlignmentPreference()
         android.util.Log.i("AirPlayLifecycle", "resume rebuild=$rebuildSurfaceOnResume surfaceReady=$surfaceReady")
         if (rebuildSurfaceOnResume && ::surfaceView.isInitialized) {
@@ -700,6 +727,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun onDestroy() {
+        controlGuardHandler.removeCallbacksAndMessages(null)
         if(::chromeLock.isInitialized)chromeLock.removeCallbacks(hideLock)
         rayAlignment.close()
         pointerObservation.close()

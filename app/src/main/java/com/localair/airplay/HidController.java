@@ -20,6 +20,15 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     private boolean needsReconnect;
     private Object uiOwner;
     private Runnable listener;
+    private java.util.function.BooleanSupplier inputContext=()->false;
+    public void setInputContext(Object owner,java.util.function.BooleanSupplier context){
+        if(uiOwner==owner){inputContext=context;checkInputContext();}
+    }
+    private boolean checkInputContext(){
+        boolean allowed=inputContext.getAsBoolean();
+        if(!allowed&&armed)disarm();
+        return allowed;
+    }
     private String lastStatus=AppText.get(R.string.mouse_disconnected);
     private final AsyncDiagnosticLog diagnostics;
     private double dragGain=1, scrollGain=1;
@@ -44,6 +53,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     public void detachUi(Object owner) {
         if(uiOwner!=owner)return;
+        inputContext=()->false;
         disarm();focused=false;listener=null;uiOwner=null;
     }
     public void setFocused(Object owner, boolean value) {
@@ -56,6 +66,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     public void toggleArmed() {
         if(armed){disarm();return;}
+        if(!checkInputContext()){note(AppText.get(R.string.waiting_for_mirroring));return;}
         if(releaseUnconfirmed||needsReconnect||!focused||!serviceReady||host==null||!subscribed||suspended||protocolMode!=1||host.getBondState()!=BluetoothDevice.BOND_BONDED) {
             note(AppText.get(R.string.connect_the_paired_ipad_and_keep_the));return;
         }
@@ -68,6 +79,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     /** A busy notification is transient; all other input gates revoke accumulated motion. */
     public boolean canTrackPointer(){
+        if(!checkInputContext())return false;
         return armed&&focused&&!needsReconnect&&!releaseUnconfirmed&&serviceReady&&server!=null&&host!=null&&subscribed&&!suspended&&protocolMode==1&&gestureRemaining==0&&!pointerAction.active()&&host.getBondState()==BluetoothDevice.BOND_BONDED;
     }
     /** Only a foreground video ray event may request bounded relative movement. */
@@ -102,6 +114,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         return Build.VERSION.SDK_INT<31 || (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)==PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)==PackageManager.PERMISSION_GRANTED);
     }
     public boolean onMotion(MotionEvent event) {
+        if(!checkInputContext())return false;
         if(event.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT){mappedScroll.stop();horizontalGate.reset();cancelPointerAction();}
         if(event.getActionMasked()!=MotionEvent.ACTION_SCROLL)return false;
         float h=event.getAxisValue(MotionEvent.AXIS_HSCROLL),v=event.getAxisValue(MotionEvent.AXIS_VSCROLL);
@@ -160,6 +173,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     public void clickPointer(){startPointerAction(0);}
     public void dragPointer(int direction){if(direction==1||direction==-1)startPointerAction(direction);}
     private void startPointerAction(int direction){
+        if(!checkInputContext())return;
         if(!armed||!focused||needsReconnect||releaseUnconfirmed||!serviceReady||server==null||host==null||!subscribed||suspended||protocolMode!=1||notificationPending||gestureRemaining!=0||host.getBondState()!=BluetoothDevice.BOND_BONDED)return;
         if(!pointerAction.start(direction,dragGain))return;
         mappedScroll.stop();pointerHost=host;pointerEpoch=generation;releaseAttempts=0;
@@ -175,6 +189,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     private final Runnable pointerPump=new Runnable(){public void run(){
         if(!pointerAction.active()||releaseUnconfirmed)return;
+        checkInputContext();
         if(!pointerLinkValid()){pointerAction.disconnected();pointerHost=null;return;}
         if(!armed||!focused||suspended)pointerAction.cancel();
         if(notificationPending)return;
@@ -228,6 +243,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         handler.removeCallbacks(gestureStep);gestureRemaining=0;gestureHost=null;
     }
     public void scrollPage(int direction){
+        if(!checkInputContext())return;
         if(gestureRemaining>0||pointerAction.active()||releaseUnconfirmed)return;
         int steps=6;
         if(!focused || (direction!=1 && direction!=-1))return;
@@ -434,6 +450,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         }); }
     }; }
     private void send(int buttons,int x,int y,int wheel){
+        if(!checkInputContext())return;
         BluetoothDevice peer=host;BluetoothGattServer gatt=server;boolean boot=protocolMode==0;
         if(pointerAction.active()||releaseUnconfirmed||!focused||!serviceReady||!armed||notificationPending||!(boot?bootSubscribed:subscribed)||peer==null||gatt==null||suspended||peer.getBondState()!=BluetoothDevice.BOND_BONDED){note("No report: require ready service, bonded host, current-schema subscription, not suspended, and armed controls");return;}
         if(boot&&wheel!=0){note("No wheel: host selected BOOT mouse mode (buttons and X/Y only)");return;}
@@ -454,6 +471,8 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         handler.postDelayed(queued.timeout,1000);
     }
     private boolean transmit(int buttons,int x,int y,int wheel,PointerAction.Packet pointer,ReportCompletion completion){
+        // Release-only reports may finish a held button after context is revoked.
+        if((buttons!=0||x!=0||y!=0||wheel!=0)&&!checkInputContext())return false;
         BluetoothDevice peer=host;BluetoothGattServer gatt=server;boolean boot=protocolMode==0;
         if(peer==null||gatt==null||!permitted())return false;
         if(pointer!=null && buttons==0)releaseAttempts++;
