@@ -80,10 +80,10 @@ class RecoveryAndroidTest {
         val activity=controller.get()
         fun buttons(v:View):List<Button> = if(v is Button)listOf(v) else if(v is ViewGroup)(0 until v.childCount).flatMap {buttons(v.getChildAt(it))} else emptyList()
         val controls=buttons(activity.window.decorView)
-        assertFalse(controls.any {it.text.toString()=="校准"})
+        assertFalse(controls.any {it.text.toString()=="Calibration"})
         val alignment=field(activity,"rayAlignment").get(activity) as RayAlignment
         alignment.calibration.begin(0)
-        controls.single {it.text.toString()=="恢复控制"}.performClick()
+        controls.single {it.text.toString()==AppText.get(R.string.restore_control)}.performClick()
         assertFalse(alignment.calibration.isActive);assertFalse(alignment.enabled);assertFalse(alignment.calibration.hasGain())
         controller.destroy()
     }

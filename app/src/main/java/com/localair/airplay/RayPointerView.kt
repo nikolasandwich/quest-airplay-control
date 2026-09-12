@@ -50,7 +50,7 @@ class RayPointerView(context: Context, private val hid: () -> RayInputTransport?
 
     init {
         isFocusable = true; isFocusableInTouchMode = true; isClickable = true
-        contentDescription = "相对射线鼠标：移动射线移动指针，确认点击 iPad 当前指针"
+        contentDescription = AppText.get(R.string.relative_ray_mouse_move_the_ray_to)
     }
     fun resetInput() {
         onReset?.invoke()

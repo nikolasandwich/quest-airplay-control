@@ -48,6 +48,7 @@ class AirPlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        AppText.initialize(this)
         hid = HidController(this)
         instance = this
         startInForeground(hid.permitted())
@@ -120,6 +121,13 @@ class AirPlayService : Service() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        AppText.initialize(this)
+        hid.refreshLanguage()
+        startInForeground(hid.permitted())
+    }
+
     private fun startInForeground(withHid: Boolean = false) {
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -129,8 +137,8 @@ class AirPlayService : Service() {
         }
         val name = DeviceIdentity.deviceName(this)
         val n: Notification = Notification.Builder(this, CHANNEL)
-            .setContentTitle("Quest 投屏与鼠标")
-            .setContentText("$name · 接收服务运行中")
+            .setContentTitle(AppText.get(R.string.quest_mirror_mouse))
+            .setContentText(AppText.get(R.string.receiver_running,name))
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

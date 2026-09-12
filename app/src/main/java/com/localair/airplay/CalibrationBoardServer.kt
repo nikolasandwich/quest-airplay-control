@@ -12,10 +12,10 @@ import java.util.UUID
 class CalibrationBoardServer(context:Context):AutoCloseable {
     private val session=UUID.randomUUID().toString()
     private data class State(val payload:String,val at:Long)
-    @Volatile private var state=State(JSONObject().put("session",session).put("status","直接控制，无需校准").toString(),SystemClock.uptimeMillis())
+    @Volatile private var state=State(JSONObject().put("session",session).put("status",AppText.get(R.string.direct_control_no_calibration_needed)).toString(),SystemClock.uptimeMillis())
     private val server=LocalBoardHttpServer(8765,context.assets.open("calibration-board.html").use {it.readBytes()},{
         val current=state
-        JSONObject(current.payload).put("ageMs",SystemClock.uptimeMillis()-current.at).toString().toByteArray(Charsets.UTF_8)
+        JSONObject(current.payload).put("language",AppText.language()).put("ageMs",SystemClock.uptimeMillis()-current.at).toString().toByteArray(Charsets.UTF_8)
     })
     init {Log.i("CalibrationBoard","Listening on ${address()}")}
     fun address():String {

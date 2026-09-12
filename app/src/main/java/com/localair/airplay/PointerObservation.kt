@@ -39,7 +39,7 @@ class PointerObservation(context: Context) {
             // Bound stored data without deleting previous evidence or collecting indefinitely.
             root.mkdirs()
             if ((root.listFiles()?.size ?: 0) >= 4) {
-                active.set(false); busy.set(false); main.post { done("已有四次采样，请先导出诊断数据") }; return@post
+                active.set(false); busy.set(false); main.post { done(AppText.get(R.string.four_captures_already_exist_export_diagnostics_first)) }; return@post
             }
             val folder = File(root, "run-$started")
             var count = 0
@@ -55,30 +55,30 @@ class PointerObservation(context: Context) {
                     File(folder,"result.txt").writeText("$reason\nPixelCopy times are request/callback times, not source capture timestamps.\n")
                 } catch (_: Exception) { }
                 busy.set(false)
-                main.post { done("只读采样结束：$count 帧（$reason）") }
+                main.post { done(AppText.get(R.string.capture_finished,count,reason)) }
             }
-            try { check(folder.mkdirs()) } catch (_: Exception) { finish("无法创建采样目录"); return@post }
+            try { check(folder.mkdirs()) } catch (_: Exception) { finish(AppText.get(R.string.cannot_create_capture_folder)); return@post }
             val capture = object : Runnable {
                 override fun run() {
-                    if (!active.get() || !surface.isValid) { finish("已停止"); return }
-                    if (count >= 30 || SystemClock.uptimeMillis()-started > 5000) { finish("完成"); return }
+                    if (!active.get() || !surface.isValid) { finish(AppText.get(R.string.stopped)); return }
+                    if (count >= 30 || SystemClock.uptimeMillis()-started > 5000) { finish(AppText.get(R.string.complete)); return }
                     val bitmap = Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
                     val requested = SystemClock.uptimeMillis()
                     try {
                         PixelCopy.request(surface,bitmap,{ status ->
                             val received = SystemClock.uptimeMillis()
                             try {
-                                if (!active.get()) { finish("已停止"); return@request }
+                                if (!active.get()) { finish(AppText.get(R.string.stopped)); return@request }
                                 frames.append("$count,$requested,$received,$status,$w,$h\n")
                                 if (status == PixelCopy.SUCCESS) File(folder,"frame-${count.toString().padStart(2,'0')}.png").outputStream().use {
                                     check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))
                                 }
                                 count++
                                 worker.postDelayed(this, maxOf(0L,100-(SystemClock.uptimeMillis()-requested)))
-                            } catch (_: Exception) { finish("保存失败") }
+                            } catch (_: Exception) { finish(AppText.get(R.string.save_failed)) }
                             finally { bitmap.recycle() }
                         },worker)
-                    } catch (_: Exception) { bitmap.recycle(); finish("视频取帧失败") }
+                    } catch (_: Exception) { bitmap.recycle(); finish(AppText.get(R.string.video_frame_capture_failed)) }
                 }
             }
             capture.run()

@@ -20,7 +20,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     private boolean needsReconnect;
     private Object uiOwner;
     private Runnable listener;
-    private String lastStatus="鼠标未连接";
+    private String lastStatus=AppText.get(R.string.mouse_disconnected);
     private final AsyncDiagnosticLog diagnostics;
     public HidController(Context context) {
         super(context);
@@ -49,11 +49,12 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     public void toggleArmed() {
         if(armed){disarm();return;}
         if(releaseUnconfirmed||needsReconnect||!focused||!serviceReady||host==null||!subscribed||suspended||protocolMode!=1||host.getBondState()!=BluetoothDevice.BOND_BONDED) {
-            note("请先连接已配对的 iPad，并保持投屏页在前台");return;
+            note(AppText.get(R.string.connect_the_paired_ipad_and_keep_the));return;
         }
-        armed=true;note("鼠标控制已启用：指向投屏画面，拨动摇杆滚动");
+        armed=true;note(AppText.get(R.string.mouse_control_enabled_point_at_the_mirrored));
     }
     public boolean isArmed(){return armed;}
+    public void refreshLanguage(){lastStatus=AppText.get(R.string.mouse_disconnected);changed();}
     public boolean canMovePointer(){
         return canTrackPointer()&&!notificationPending;
     }
@@ -73,12 +74,12 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     public boolean isStarted(){return server!=null;}
     public String statusText(){
-        if(releaseUnconfirmed)return "鼠标松开未确认 · 请重连原 Quest 蓝牙设备";
-        if(needsReconnect)return "请在 iPad 蓝牙中断开并重连原 Quest 设备一次";
-        if(armed)return "上下滚动 · 左右拖拽 · 点击作用于 iPad 当前指针";
-        if(host!=null&&subscribed)return "鼠标已连接 · 点击启用控制";
-        if(host!=null)return "蓝牙已连接 · 等待鼠标订阅";
-        if(advertising)return "请在 iPad 蓝牙中连接原 Quest 设备";
+        if(releaseUnconfirmed)return AppText.get(R.string.mouse_release_unconfirmed_reconnect_the_original_quest);
+        if(needsReconnect)return AppText.get(R.string.disconnect_and_reconnect_the_original_quest_device);
+        if(armed)return AppText.get(R.string.scroll_up_down_drag_left_right_click);
+        if(host!=null&&subscribed)return AppText.get(R.string.mouse_connected_enable_control_to_start);
+        if(host!=null)return AppText.get(R.string.bluetooth_connected_waiting_for_mouse_subscription);
+        if(advertising)return AppText.get(R.string.connect_the_original_quest_device_in_ipad);
         return lastStatus;
     }
     private void changed(){if(listener!=null)listener.run();}
@@ -431,7 +432,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
             if(generation!=submittedGeneration||!pendingReports.contains(queued)||!queued.deadline.expire(SystemClock.uptimeMillis()))return;
             // Retire the server generation: late ACKs cannot name their original report.
             stop();needsReconnect=true;
-            note("鼠标传输确认超时 · 已停止旧连接，请重连原设备");
+            note(AppText.get(R.string.mouse_confirmation_timed_out_connection_stopped_reconnect));
             final int retiredGeneration=generation;
             handler.postDelayed(() -> {if(generation==retiredGeneration&&server==null&&permitted())start();},1000);
         };

@@ -56,7 +56,7 @@ class RayAlignment(
         AirPlayService.instance?.calibrationBoard?.update(calibration,status)
         changed()
     }
-    fun invalidateTarget() { epoch++; targetX=Double.NaN; targetY=Double.NaN; identity.reset(); policy.reset(); calibration.invalidateSegment(); status="请移动射线识别真实指针" }
+    fun invalidateTarget() { epoch++; targetX=Double.NaN; targetY=Double.NaN; identity.reset(); policy.reset(); calibration.invalidateSegment(); status=AppText.get(R.string.move_the_ray_to_identify_the_pointer) }
     fun onRay(x: Float,y: Float,w: Int,h: Int,time: Long) {
         if (!samplingNeeded() || w<=0 || h<=0) return
         val scale=minOf(1.0,720.0/maxOf(w,h))
@@ -86,7 +86,7 @@ class RayAlignment(
                 identity.reset();policy.reset()
                 calibration.invalidateSegment()
                 if(targetX.isFinite())policy.target(targetX,targetY,SystemClock.uptimeMillis())
-                publish(gate ?: "请指向投屏画面")
+                publish(gate ?: AppText.get(R.string.point_at_the_mirrored_screen))
                 schedule();return
             }
             if (busy) { schedule(); return }
@@ -137,7 +137,7 @@ class RayAlignment(
                                 publish(policy.status + if(!ready) "：${hid()?.statusText()}" else "")
                             } else {
                                 // Pause commands, preserving this target's command/time limits through a gap.
-                                publish(if(!fresh) "观察过旧，暂停对齐" else identity.reason)
+                                publish(if(!fresh) AppText.get(R.string.observation_is_stale_alignment_paused) else identity.reason)
                             }
                             if(now-lastTimingLog>=1000){
                                 lastTimingLog=now

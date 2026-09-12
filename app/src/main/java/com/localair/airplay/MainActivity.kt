@@ -61,14 +61,15 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppText.initialize(this)
         pointerObservation = PointerObservation(this)
         rayAlignment = RayAlignment({ surfaceView }, { attachedHid }, {
             when {
-                !hasWindowFocus() -> "投屏页未在前台"
-                !rayMode -> "射线模式已关闭"
-                attachedHid?.isArmed != true -> "鼠标控制尚未启用"
-                !surfaceReady -> "等待投屏画面"
-                svc?.video?.hasRecentOutputFor(surfaceOwner) != true -> "等待新的投屏帧"
+                !hasWindowFocus() -> AppText.get(R.string.mirroring_window_is_not_in_the_foreground)
+                !rayMode -> AppText.get(R.string.ray_mode_is_off)
+                attachedHid?.isArmed != true -> AppText.get(R.string.mouse_control_is_not_enabled)
+                !surfaceReady -> AppText.get(R.string.waiting_for_mirroring)
+                svc?.video?.hasRecentOutputFor(surfaceOwner) != true -> AppText.get(R.string.waiting_for_a_new_video_frame)
                 else -> null
             }
         }) { updateHidUi() }
@@ -90,7 +91,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         hidStatus = TextView(this).apply {
             setTextColor(Color.LTGRAY); textSize = 15f; gravity = Gravity.CENTER
             setPadding(12, 8, 12, 8)
-            text = "Quest 投屏与鼠标 · 正在启动"
+            text = AppText.get(R.string.quest_mirror_mouse_starting)
             maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END
         }
         // Status updates cannot change the weighted video area's size.
@@ -118,7 +119,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         rayView.onReset = rayAlignment::invalidateTarget
         videoArea.addView(rayView, FrameLayout.LayoutParams(-1, -1).apply { gravity = Gravity.CENTER })
         waiting = TextView(this).apply {
-            text = "${DeviceIdentity.deviceName(this@MainActivity)}\nwaiting for AirPlay…"
+            text = AppText.get(R.string.waiting_airplay,DeviceIdentity.deviceName(this@MainActivity))
             setTextColor(Color.WHITE)
             textSize = 28f
             gravity = Gravity.CENTER
@@ -133,24 +134,27 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         controls.addView(primary); controls.addView(pointer)
         fun action(row: LinearLayout, label: String, run: () -> Unit): Button = Button(this).apply {
             text = label; textSize = 16f; isAllCaps = false
+            maxLines=2
+            ellipsize=android.text.TextUtils.TruncateAt.END
+            androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(this,10,16,1,android.util.TypedValue.COMPLEX_UNIT_SP)
             setOnClickListener { run() }
             row.addView(this, LinearLayout.LayoutParams(0, (56 * resources.displayMetrics.density).toInt(), 1f))
         }
-        action(primary, "连接鼠标") { connectMouse() }
-        controlButton = action(primary, "启用控制") { svc?.hid?.toggleArmed(); updateHidUi() }
-        previousButton = action(primary, "上一条") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(1) }
-        nextButton = action(primary, "下一条") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(-1) }
-        action(primary, "恢复控制") { restoreDirectControl() }
+        action(primary, AppText.get(R.string.connect_mouse)) { connectMouse() }
+        controlButton = action(primary, AppText.get(R.string.enable_control)) { svc?.hid?.toggleArmed(); updateHidUi() }
+        previousButton = action(primary, AppText.get(R.string.scroll_up)) { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(1) }
+        nextButton = action(primary, AppText.get(R.string.scroll_down)) { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(-1) }
+        action(primary, AppText.get(R.string.restore_control)) { restoreDirectControl() }
         lateinit var speedButton: Button
-        speedButton=action(primary,if(rayAlignment.isFast())"辅助：跟手优先" else "辅助：稳定优先") {
+        speedButton=action(primary,if(rayAlignment.isFast())AppText.get(R.string.assist_responsive) else AppText.get(R.string.assist_steady)) {
             rayAlignment.toggleSpeed()
             getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("fast_alignment",rayAlignment.isFast()).apply()
-            speedButton.text=if(rayAlignment.isFast())"辅助：跟手优先" else "辅助：稳定优先"
+            speedButton.text=if(rayAlignment.isFast())AppText.get(R.string.assist_responsive) else AppText.get(R.string.assist_steady)
         }
-        leftButton = action(pointer, "左滑（拖拽）") { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(-1) }
-        clickButton = action(pointer, "点击当前指针") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.clickPointer() }
-        rightButton = action(pointer, "右滑（拖拽）") { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(1) }
-        rayButton = action(pointer, "相对射线：关") {
+        leftButton = action(pointer, AppText.get(R.string.drag_left)) { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(-1) }
+        clickButton = action(pointer, AppText.get(R.string.click_pointer)) { rayAlignment.calibration.invalidateSegment(); svc?.hid?.clickPointer() }
+        rightButton = action(pointer, AppText.get(R.string.drag_right)) { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(1) }
+        rayButton = action(pointer, AppText.get(R.string.relative_ray_off)) {
             rayMode = !rayMode
             getSharedPreferences("pointer_ui", MODE_PRIVATE).edit()
                 .putBoolean("relative_ray_enabled", rayMode).apply()
@@ -158,7 +162,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             updateHidUi()
             refreshVideoState()
         }
-        alignButton = action(pointer, "辅助对齐：关") {
+        alignButton = action(pointer, AppText.get(R.string.alignment_off)) {
             rayAlignment.setEnabled(!rayAlignment.enabled)
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
@@ -183,7 +187,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val ready = surfaceReady && svc?.video?.hasFrames == true && hasWindowFocus()
         android.util.Log.i("PointerObservation", "User requested capture: surface=$surfaceReady frames=${svc?.video?.hasFrames} focus=${hasWindowFocus()}")
         if (!ready) {
-            android.widget.Toast.makeText(this,"未开始：请先恢复投屏并保持应用在前台",android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(this,AppText.get(R.string.not_started_restore_mirroring_and_keep_this),android.widget.Toast.LENGTH_LONG).show()
             return
         }
         val started = pointerObservation.start(surfaceView.holder.surface,surfaceView.width,surfaceView.height) { message ->
@@ -191,7 +195,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             if (!isDestroyed) android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show()
         }
         android.util.Log.i("PointerObservation", "Capture accepted=$started")
-        android.widget.Toast.makeText(this,if (started) "只读采样约3秒，请手动移动指针" else "未开始：采样忙或视频不可用",android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(this,if (started) AppText.get(R.string.read_only_capture_takes_about_3_seconds) else AppText.get(R.string.not_started_capture_is_busy_or_video),android.widget.Toast.LENGTH_LONG).show()
     }
 
     private fun attachControlsWhenReady() {
@@ -210,20 +214,20 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val hid = attachedHid ?: return
         var primary=hid.statusText()
         var detail=""
-        if(rayMode&&hid.isArmed){primary="相对射线控制";detail="移动射线带动指针；确认键点击当前指针"}
-        if(rayAlignment.enabled&&hid.isArmed){primary="辅助对齐 · "+rayAlignment.status;detail="实验辅助识别失败时，直接移动仍可用"}
+        if(rayMode&&hid.isArmed){primary=AppText.get(R.string.relative_ray_control);detail=AppText.get(R.string.move_the_ray_to_move_the_pointer)}
+        if(rayAlignment.enabled&&hid.isArmed){primary=AppText.get(R.string.alignment_assist)+rayAlignment.status;detail=AppText.get(R.string.direct_movement_still_works_if_experimental_detection)}
         if(rayAlignment.calibration.isActive){
-            primary=if(rayAlignment.calibration.awaitingReference())"校准 · 最后确认（见页面）" else "校准 ${rayAlignment.calibration.stage()+1}/10 · 按页面提示操作"
+            primary=if(rayAlignment.calibration.awaitingReference())AppText.get(R.string.calibration_final_confirmation_see_page) else AppText.get(R.string.calibration_progress,rayAlignment.calibration.stage()+1)
             detail=rayAlignment.calibration.status+" · "+rayAlignment.status
-        }else if(hid.isArmed&&rayAlignment.calibration.status!="尚未校准"){
+        }else if(hid.isArmed&&rayAlignment.calibration.status!=AppText.get(R.string.not_calibrated)){
             if(rayAlignment.enabled)detail=rayAlignment.calibration.status
             else primary=rayAlignment.calibration.status
         }
         if(hidStatus.text.toString()!=primary)hidStatus.text=primary
-        hidStatus.contentDescription=primary+"。"+detail
-        alignButton.text = if (rayAlignment.enabled) "辅助对齐：开" else "辅助对齐：关"
-        rayButton.text = if (rayMode) "相对射线：开" else "相对射线：关"
-        controlButton.text = if (hid.isArmed) "暂停控制" else "启用控制"
+        hidStatus.contentDescription=primary+". "+detail
+        alignButton.text = if (rayAlignment.enabled) AppText.get(R.string.alignment_on) else AppText.get(R.string.alignment_off)
+        rayButton.text = if (rayMode) AppText.get(R.string.relative_ray_on) else AppText.get(R.string.relative_ray_off)
+        controlButton.text = if (hid.isArmed) AppText.get(R.string.pause_control) else AppText.get(R.string.enable_control)
         val actionsAllowed=hid.isArmed&&!rayAlignment.calibration.isActive
         previousButton.isEnabled = actionsAllowed
         nextButton.isEnabled = actionsAllowed
@@ -238,17 +242,17 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         fun note(value:String,selectable:Boolean=false){panel.addView(TextView(this).apply {
             text=value;textSize=16f;setPadding(0,8,0,8);setTextIsSelectable(selectable)
         })}
-        note("连接鼠标后启用控制，移动射线带动 iPad 指针；确认键点击真实指针当前位置。无需打开网页或做校准。")
-        note("辅助对齐是可选实验。识别不到时仍可直接移动；点“恢复控制”可退出辅助、恢复基础移动比例。")
-        note("恢复控制不会把 iPad 指针移到中央。当前尚无可靠的跨应用绝对回中功能。")
-        note("当前：${attachedHid?.statusText()}\n${if(rayAlignment.enabled)rayAlignment.status else "直接控制，无需识别"}")
+        note(AppText.get(R.string.connect_the_mouse_and_enable_control_move))
+        note(AppText.get(R.string.alignment_assist_is_optional_and_experimental_direct))
+        note(AppText.get(R.string.restore_control_does_not_center_the_ipad))
+        note(AppText.get(R.string.current_status,attachedHid?.statusText() ?: "",if(rayAlignment.enabled)rayAlignment.status else AppText.get(R.string.direct_no_detection)))
         val dialog=android.app.AlertDialog.Builder(this)
-            .setTitle("鼠标控制")
+            .setTitle(AppText.get(R.string.mouse_control))
             .setView(android.widget.ScrollView(this).apply {addView(panel)})
-            .setPositiveButton("恢复直接控制"){_,_ ->
+            .setPositiveButton(AppText.get(R.string.restore_direct_control)){_,_ ->
                 pendingControlRestore=true
             }
-            .setNegativeButton("关闭",null).create()
+            .setNegativeButton(AppText.get(R.string.close),null).create()
         dialog.setOnDismissListener {window.decorView.post { restoreWhenFocused() }}
         dialog.show()
     }
@@ -293,7 +297,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         super.onRequestPermissionsResult(requestCode, permissions, results)
         if (requestCode == 41) {
             if (svc?.hid?.permitted() == true) svc?.enableHid()
-            else hidStatus.text = "需要蓝牙权限才能使用鼠标；投屏可继续使用"
+            else hidStatus.text = AppText.get(R.string.bluetooth_permission_is_needed_for_the_mouse)
         }
     }
 
