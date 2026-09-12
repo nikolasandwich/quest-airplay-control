@@ -1,3 +1,4 @@
 # Overlay control lock 0.2.22
 
 A 48dp lock button at the right center toggles top status and bottom controls. It remains available to restore controls; hidden in settings and PiP. This is a UI visibility lock, not a mouse control lock. Same SurfaceView retained; reset ray accumulation on toggle. Generic pointer events over lock bypass global HID handling. Visibility survives activity recreation but starts unlocked on fresh launch. All 76 tests, APK build, lint and 158-key localization check passed. Not installed; no physical visual or pointer interaction verification yet.
+Added lock instructions to the button table and fifth onboarding card in all four languages. Rebuilt with 76 passing tests and 159-key localization check. Installed successfully by USB on 2026-09-12 18:08:14; verified code 29 and launched process 12609.

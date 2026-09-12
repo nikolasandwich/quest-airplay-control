@@ -354,7 +354,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             listOf(R.string.alignment_on) to R.string.alignment_setting_description,
             listOf(R.string.assist_responsive,R.string.assist_steady) to R.string.speed_setting_description,
             listOf(R.string.language_settings) to R.string.app_language_description,
-            listOf(R.string.restore_control) to R.string.restore_control_does_not_center_the_ipad)
+            listOf(R.string.restore_control) to R.string.restore_control_does_not_center_the_ipad,
+            listOf(R.string.hide_controls,R.string.show_controls) to R.string.lock_description)
         rows.forEachIndexed {index,(labels,description) ->
             content.addView(LinearLayout(this).apply {
                 orientation=LinearLayout.HORIZONTAL

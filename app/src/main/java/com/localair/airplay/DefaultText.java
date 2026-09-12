@@ -158,9 +158,10 @@ final class DefaultText {
         if(id==R.string.start_card_2)return "2. Start mirroring\nOn iPad, open Control Center, choose Screen Mirroring, then select Quest AirPlay Lab. Wait for the iPad picture to appear.";
         if(id==R.string.start_card_3)return "3. Connect the mouse\nReturn to mirroring and select Connect mouse. Allow Bluetooth access if asked. In iPad Bluetooth settings, pair or reconnect the Quest mouse device.";
         if(id==R.string.start_card_4)return "4. Enable control\nSelect Enable control. Move the ray to move the iPad pointer; confirm clicks the pointer position. No calibration is needed.";
-        if(id==R.string.start_card_5)return "5. Everyday use\nPause control when needed. Settings contains language, ray and alignment options. After leaving Settings, enable control again. Restore control turns assist off; it does not center the pointer.";
+        if(id==R.string.start_card_5)return "5. Everyday use\nPause control when needed. Settings contains language, ray and alignment options. After leaving Settings, enable control again. Restore control turns assist off; it does not center the pointer.\nTap the lock on the right to hide the top and bottom controls. Tap it again to show them. This only hides the interface; mouse control continues.";
         if(id==R.string.show_controls)return "Show controls";
         if(id==R.string.hide_controls)return "Hide controls";
+        if(id==R.string.lock_description)return "Tap the lock on the right to hide the top and bottom controls. Tap it again to show them. This only hides the interface; mouse control continues.";
         throw new IllegalArgumentException("Unknown text resource: "+id);
     }
 }
