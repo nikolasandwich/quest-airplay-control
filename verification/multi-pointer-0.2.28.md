@@ -5,3 +5,4 @@ MultiPointerTracker tracks up to eight observed shape candidates, retaining per-
 88 tests passed, APK and lint passed. Tests cover moving circle vs stationary menu, shared motion ambiguity, stationary targets, stale history, competing near circles, brief loss recovery, existing circle/arrow and input guard regressions. Synthetic sequences cannot prove robustness on real video or moving icon content.
 
 Installed on explicit user request 2026-09-12 20:02:31, version code 35, PID 21990. Startup verified; no automatic mouse input. Includes input guard; physical immediate headset-doff behavior remains unverified. Real phone/menu tracking outcome requires user validation.
+User feedback after installation: currently feels acceptable (目前感觉还可以). User explicitly requested pushing this version to GitHub. This is subjective initial feedback, not comprehensive accuracy or headset-doff verification.
