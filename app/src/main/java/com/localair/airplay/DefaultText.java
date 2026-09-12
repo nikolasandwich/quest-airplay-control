@@ -148,6 +148,7 @@ final class DefaultText {
         if(id==R.string.speed_setting_description)return "Assist speed changes visual correction only. It does not change direct mouse sensitivity.";
         if(id==R.string.main_buttons_description)return "Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control.";
         if(id==R.string.pointer_buttons_description)return "Drag left/right holds the mouse button at the current iPad pointer, drags, then releases. Click pointer clicks that position. These actions need enabled control. Language applies only to this app; Back returns to mirroring.";
+        if(id==R.string.button_guide)return "Button guide";
         throw new IllegalArgumentException("Unknown text resource: "+id);
     }
 }

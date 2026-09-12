@@ -145,4 +145,5 @@
     <string name="speed_setting_description">"Die Hilfsgeschwindigkeit ändert nur die visuelle Korrektur, nicht die direkte Mausempfindlichkeit."</string>
     <string name="main_buttons_description">"Maus verbinden startet die Bluetooth-Einrichtung. Aktivieren/Pausieren erlaubt oder stoppt Mauseingaben. Nach oben/unten sendet Scrollbewegungen; die iPad-App bestimmt das Ergebnis. Zurücksetzen deaktiviert die Hilfe und stellt die direkte Steuerung wieder her."</string>
     <string name="pointer_buttons_description">"Links/rechts ziehen drückt an der aktuellen iPad-Zeigerposition, zieht und lässt los. Mausklick klickt dort. Die Steuerung muss aktiv sein. Sprache gilt nur für diese App; Zurück führt zur Übertragung."</string>
+    <string name="button_guide">Bedienungshilfe</string>
 </resources>

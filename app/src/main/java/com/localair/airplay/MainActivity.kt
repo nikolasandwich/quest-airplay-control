@@ -257,9 +257,14 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         dialog.show()
     }
     private fun createSettingsPage():View {
+        fun dp(value:Int)=(value*resources.displayMetrics.density).toInt()
+        fun surface()=android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(35,43,56));cornerRadius=dp(16).toFloat()
+            setStroke(dp(1),Color.rgb(57,69,87))
+        }
         val page=LinearLayout(this).apply {
-            orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(24,24,24))
-            setPadding(24,20,24,20);isClickable=true;isFocusableInTouchMode=true
+            orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(17,23,33))
+            setPadding(dp(28),dp(16),dp(28),dp(16));isClickable=true;isFocusableInTouchMode=true
         }
         page.addView(Button(this).apply {
             text=AppText.get(R.string.back_to_mirroring);isAllCaps=false
@@ -269,9 +274,6 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             text=AppText.get(R.string.app_settings);textSize=26f;setTextColor(Color.WHITE);setPadding(0,16,0,16)
         })
         val content=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL}
-        content.addView(TextView(this).apply {
-            text=AppText.get(R.string.app_language_description);textSize=18f;setTextColor(Color.LTGRAY);setPadding(0,8,0,16)
-        })
         val selected=when(AppText.selection(this)){
             "en" -> AppText.get(R.string.language_english)
             "de" -> AppText.get(R.string.language_german)
@@ -280,19 +282,20 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             else -> AppText.get(R.string.follow_system)
         }
         content.addView(TextView(this).apply {
-            text=AppText.get(R.string.selected_language,selected);textSize=18f;setTextColor(Color.WHITE)
+            text=AppText.get(R.string.selected_language,selected);textSize=15f;setTextColor(Color.rgb(173,187,208));setPadding(dp(4),0,0,dp(8))
         })
         content.addView(Button(this).apply {
             text=AppText.get(R.string.language_settings);isAllCaps=false
+            background=surface();setTextColor(Color.WHITE);minHeight=dp(56)
             setOnClickListener {showLanguageSettings()}
         },LinearLayout.LayoutParams(-1,-2))
-        fun note(id:Int){content.addView(TextView(this).apply {
-            text=AppText.get(id);textSize=16f;setTextColor(Color.LTGRAY);setPadding(0,12,0,12)
-        })}
         fun setting(label:String,run:()->Unit)=Button(this).apply {
             text=label;isAllCaps=false;maxLines=2
+            textSize=17f;setTextColor(Color.WHITE);background=surface()
+            gravity=android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
+            setPadding(dp(20),dp(12),dp(20),dp(12));minHeight=dp(56)
             setOnClickListener {run()}
-            content.addView(this,LinearLayout.LayoutParams(-1,-2))
+            content.addView(this,LinearLayout.LayoutParams(-1,-2).apply {topMargin=dp(10)})
         }
         rayButton=setting(AppText.get(if(rayMode)R.string.relative_ray_on else R.string.relative_ray_off)){
             rayMode=!rayMode
@@ -302,26 +305,39 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             updateHidUi()
         }
         rayButton.setOnLongClickListener {closeSettingsPage();startPointerObservation();true}
-        note(R.string.ray_setting_description)
         alignButton=setting(AppText.get(if(alignmentRequested)R.string.alignment_on else R.string.alignment_off)){
             alignmentRequested=!alignmentRequested
             getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("alignment_enabled",alignmentRequested).apply()
             alignButton.text=AppText.get(if(alignmentRequested)R.string.alignment_on else R.string.alignment_off)
             syncAlignmentPreference()
         }
-        note(R.string.alignment_setting_description)
         lateinit var speed:Button
         speed=setting(AppText.get(if(rayAlignment.isFast())R.string.assist_responsive else R.string.assist_steady)){
             rayAlignment.toggleSpeed()
             getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("fast_alignment",rayAlignment.isFast()).apply()
             speed.text=AppText.get(if(rayAlignment.isFast())R.string.assist_responsive else R.string.assist_steady)
         }
-        note(R.string.speed_setting_description)
-        note(R.string.main_buttons_description)
-        note(R.string.pointer_buttons_description)
-        note(R.string.restore_control_does_not_center_the_ipad)
+        setting(AppText.get(R.string.button_guide)){showButtonGuide()}
         page.addView(android.widget.ScrollView(this).apply {addView(content)},LinearLayout.LayoutParams(-1,0,1f))
         return page
+    }
+    private fun showButtonGuide(){
+        val content=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            val inset=(24*resources.displayMetrics.density).toInt()
+            setPadding(inset,inset,inset,inset)
+        }
+        intArrayOf(R.string.main_buttons_description,R.string.pointer_buttons_description,
+            R.string.ray_setting_description,R.string.alignment_setting_description,
+            R.string.speed_setting_description,R.string.app_language_description,
+            R.string.restore_control_does_not_center_the_ipad).forEach {id ->
+            content.addView(TextView(this).apply {
+                text=AppText.get(id);textSize=17f;setPadding(0,0,0,24)
+            })
+        }
+        android.app.AlertDialog.Builder(this).setTitle(AppText.get(R.string.button_guide))
+            .setView(android.widget.ScrollView(this).apply {addView(content)})
+            .setPositiveButton(AppText.get(R.string.close),null).show()
     }
     private fun openSettingsPage(){
         settingsOpen=true;settingsBack.isEnabled=true;pendingControlRestore=false

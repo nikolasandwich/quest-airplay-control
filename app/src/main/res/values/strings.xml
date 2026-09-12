@@ -145,4 +145,5 @@
     <string name="speed_setting_description">"Assist speed changes visual correction only. It does not change direct mouse sensitivity."</string>
     <string name="main_buttons_description">"Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control."</string>
     <string name="pointer_buttons_description">"Drag left/right holds the mouse button at the current iPad pointer, drags, then releases. Click pointer clicks that position. These actions need enabled control. Language applies only to this app; Back returns to mirroring."</string>
+    <string name="button_guide">Button guide</string>
 </resources>

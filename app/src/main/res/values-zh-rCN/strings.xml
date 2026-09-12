@@ -145,4 +145,5 @@
     <string name="speed_setting_description">"辅助速度只调整视觉校正策略，不改变直接鼠标控制的灵敏度。"</string>
     <string name="main_buttons_description">"连接鼠标：启动蓝牙连接准备。启用/暂停：允许或停止鼠标输入。上一条/下一条：发送上下滚动，由 iPad 应用决定内容如何变化。恢复控制：关闭辅助并恢复基础相对控制。"</string>
     <string name="pointer_buttons_description">"左滑/右滑：在 iPad 当前指针位置按下、拖动后松开。点击当前指针：点击该位置。这些动作需要启用控制。语言只影响此应用；返回投屏回到主页面。"</string>
+    <string name="button_guide">按钮说明</string>
 </resources>

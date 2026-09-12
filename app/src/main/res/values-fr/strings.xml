@@ -145,4 +145,5 @@
     <string name="speed_setting_description">"La vitesse de l’aide ne modifie que la correction visuelle, pas la sensibilité directe de la souris."</string>
     <string name="main_buttons_description">"Connecter souris prépare le Bluetooth. Activer/Suspendre autorise ou arrête les entrées. Le défilement vertical dépend de l’application iPad. Rétablir commande désactive l’aide et restaure la commande relative de base."</string>
     <string name="pointer_buttons_description">"Glisser à gauche/droite maintient le bouton à la position du pointeur iPad, déplace puis relâche. Cliquer agit à cette position. La commande doit être activée. La langue ne concerne que cette application ; Retour revient à la recopie."</string>
+    <string name="button_guide">Guide des commandes</string>
 </resources>
