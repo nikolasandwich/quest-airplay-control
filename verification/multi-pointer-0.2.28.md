@@ -1,0 +1,7 @@
+# Shape and motion tracking 0.2.28
+
+MultiPointerTracker tracks up to eight observed shape candidates, retaining per-track shape/size and position within short observation gaps. It associates compatible nearby detections; close competing matches reset rather than guess. Four observations with six pixels of candidate and ray motion, aligned direction and bounded movement ratio are required to confirm. Stationary menu alongside moving circle no longer causes unconditional rejection. Multiple confirmed moving targets remain ambiguous. Brief loss requires two consistent recovery frames. Expired history, invalid time and context reset erase identity. No colour dependency, no cross-session profile or manual preset UI, and no full-frame optical flow introduced. Shape detector remains the candidate source. Positions/types/sizes and selected point logged for actual-device analysis.
+
+88 tests passed, APK and lint passed. Tests cover moving circle vs stationary menu, shared motion ambiguity, stationary targets, stale history, competing near circles, brief loss recovery, existing circle/arrow and input guard regressions. Synthetic sequences cannot prove robustness on real video or moving icon content.
+
+Installed on explicit user request 2026-09-12 20:02:31, version code 35, PID 21990. Startup verified; no automatic mouse input. Includes input guard; physical immediate headset-doff behavior remains unverified. Real phone/menu tracking outcome requires user validation.

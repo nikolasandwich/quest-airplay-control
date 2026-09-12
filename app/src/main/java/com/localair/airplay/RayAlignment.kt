@@ -19,7 +19,7 @@ class RayAlignment(
     private val thread = HandlerThread("RayAlignment").apply { start() }
     private val worker = Handler(thread.looper)
     private val detector = ArrowPointerDetector()
-    private val identity = PointerIdentityTracker()
+    private val identity = MultiPointerTracker()
     private val policy = SettleController().apply { setFast(true) }
     fun isFast()=policy.isFast
     fun setFast(value:Boolean){policy.setFast(value);invalidateTarget()}
@@ -116,7 +116,7 @@ class RayAlignment(
                             val now=SystemClock.uptimeMillis()
                             val fresh=now-requestTime in 0..250
                             val trusted=if(fresh)identity.update(matches,targetX,targetY,requestTime) else {identity.reset();false}
-                            val point=matches.singleOrNull()
+                            val point=identity.selected()
                             val distance=point?.let{kotlin.math.hypot(policy.targetX()-it.x,policy.targetY()-it.y)}
                             val ready=hid()?.canMovePointer()==true
                             val calibrationBefore=calibration.status
@@ -127,8 +127,8 @@ class RayAlignment(
                             }
                             if(calibration.isActive || !enabled){
                                 publish(calibration.status + if(!trusted) " · ${identity.reason}" else "")
-                            } else if (trusted && matches.size==1) {
-                                val confirmed=matches[0]
+                            } else if (trusted && point!=null) {
+                                val confirmed=point
                                 val step=policy.observe(confirmed.x.toDouble(),confirmed.y.toDouble(),requestTime,now,true,true,ready)
                                 if(step!=null)calibration.externalAction()
                                 if (step!=null && hid()?.movePointer(step.x,step.y)!=true) policy.rejected()
@@ -141,6 +141,7 @@ class RayAlignment(
                             }
                             if(now-lastTimingLog>=1000){
                                 lastTimingLog=now
+                                android.util.Log.i("RayAlignment","tracks="+matches.take(8).joinToString { "${if(it.circular) "circle" else "arrow"}@${it.x},${it.y}:${it.width}x${it.height}" }+" selected=${point?.x},${point?.y}")
                                 android.util.Log.i("RayAlignment","observation target=${policy.targetRevision} copyResult=$code candidates=${matches.size} trusted=$trusted identity=${identity.reason} shape=${point?.score} candidateDistance=$distance targetX=${policy.targetX()} targetY=${policy.targetY()} rayX=$targetX rayY=$targetY transportReady=$ready copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime} state=$status")
                             }
                         }
