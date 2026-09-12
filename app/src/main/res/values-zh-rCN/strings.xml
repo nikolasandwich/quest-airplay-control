@@ -143,7 +143,7 @@
     <string name="ray_setting_description">"相对射线用射线移动带动 iPad 指针；关闭不会停止投屏。"</string>
     <string name="alignment_setting_description">"辅助对齐默认开启，启用鼠标控制后才进行实验性视觉校正。在设置页中暂停工作，开关选择会保存。"</string>
     <string name="speed_setting_description">"辅助速度只调整视觉校正策略，不改变直接鼠标控制的灵敏度。"</string>
-    <string name="main_buttons_description">"连接鼠标：启动蓝牙连接准备。启用/暂停：允许或停止鼠标输入。上一条/下一条：发送上下滚动，由 iPad 应用决定内容如何变化。恢复控制：关闭辅助并恢复基础相对控制。"</string>
+    <string name="main_buttons_description">"连接鼠标：启动蓝牙连接准备。启用/暂停：允许或停止鼠标输入。上一条/下一条：发送上下滚动，由 iPad 应用决定内容如何变化。恢复控制：关闭辅助并恢复基础相对控制。\n\niPad：iPadOS 13.4 及以上的基础鼠标操作通常无需开启辅助触控。iPhone：先打开设置 → 辅助功能 → 触控 → 辅助触控，再到蓝牙设置中配对或重新连接 Quest 鼠标。仅连上投屏不等于连上鼠标；最后在 Quest 应用中点击启用控制。"</string>
     <string name="pointer_buttons_description">"左滑/右滑：在 iPad 当前指针位置按下、拖动后松开。点击当前指针：点击该位置。这些动作需要启用控制。语言只影响此应用；返回投屏回到主页面。"</string>
     <string name="button_guide">按钮说明</string>
     <string name="quick_start">"新手入门"</string>
@@ -153,7 +153,7 @@
     <string name="guide_done">"完成"</string>
     <string name="start_card_1">"1. 打开应用\n让 Quest 和 iPad 连接同一个 Wi-Fi。投屏期间保持本应用打开。"</string>
     <string name="start_card_2">"2. 开始投屏\n在 iPad 控制中心打开屏幕镜像，选择 Quest AirPlay Lab，等待 iPad 画面出现。"</string>
-    <string name="start_card_3">"3. 连接鼠标\n返回投屏页，点击连接鼠标；如有提示，请允许蓝牙访问。到 iPad 蓝牙设置中配对或重新连接 Quest 鼠标设备。"</string>
+    <string name="start_card_3">"3. 连接鼠标\n返回投屏页，点击连接鼠标；如有提示，请允许蓝牙访问。到 iPad 蓝牙设置中配对或重新连接 Quest 鼠标设备。\n\niPad：iPadOS 13.4 及以上的基础鼠标操作通常无需开启辅助触控。iPhone：先打开设置 → 辅助功能 → 触控 → 辅助触控，再到蓝牙设置中配对或重新连接 Quest 鼠标。仅连上投屏不等于连上鼠标；最后在 Quest 应用中点击启用控制。"</string>
     <string name="start_card_4">"4. 启用控制\n点击启用控制。移动射线即可移动 iPad 指针，确认操作会点击指针当前位置，无需校准。"</string>
     <string name="start_card_5">"5. 日常使用\n需要时暂停控制。语言、射线和辅助对齐在设置中；退出设置后需重新启用控制。恢复控制会关闭辅助，但不会让指针回到中央。\n点击画面右侧小锁可隐藏顶部状态栏和底部按钮，再点一次恢复。小锁只隐藏界面，鼠标控制仍可继续使用。\n隐藏控制栏后，小锁会在三秒无操作后隐去。将手的射线移到右侧原来的小锁位置即可显示，移开后会再次自动隐藏。"</string>
     <string name="show_controls">显示控制栏</string>
