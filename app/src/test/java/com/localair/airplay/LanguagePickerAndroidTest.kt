@@ -47,14 +47,16 @@ class LanguagePickerAndroidTest {
         try {AppText.setLanguage(app,"invalid");fail("Expected rejection")}catch(expected:IllegalArgumentException){}
         assertEquals("en",AppText.selection(app))
     }
-    @Test fun helpEntryOpensPickerAndAppliesEnglish(){
+    @Test fun bottomButtonOpensPickerAndAppliesEnglish(){
         val controller=Robolectric.buildActivity(MainActivity::class.java).create()
         try {
             val activity=controller.get()
-            MainActivity::class.java.getDeclaredMethod("showControlHelp").apply {isAccessible=true}.invoke(activity)
-            val help=ShadowAlertDialog.getLatestAlertDialog()
-            assertTrue(help.getButton(AlertDialog.BUTTON_NEUTRAL).text.toString().contains("Language"))
-            help.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
+            fun buttons(v:android.view.View):List<android.widget.Button> =
+                if(v is android.widget.Button)listOf(v) else if(v is android.view.ViewGroup)(0 until v.childCount).flatMap {buttons(v.getChildAt(it))} else emptyList()
+            val language=buttons(activity.window.decorView).single {it.text.toString()==AppText.get(R.string.language_settings)}
+            assertTrue(language.isEnabled)
+            assertEquals(android.view.View.VISIBLE,language.visibility)
+            language.performClick()
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             val picker=ShadowAlertDialog.getLatestAlertDialog()
             assertEquals(5,picker.listView.adapter.count)

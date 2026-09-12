@@ -165,6 +165,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         alignButton = action(pointer, AppText.get(R.string.alignment_off)) {
             rayAlignment.setEnabled(!rayAlignment.enabled)
         }
+        action(pointer, AppText.get(R.string.language_settings)) { showLanguageSettings() }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
         rayButton.setOnLongClickListener {
             startPointerObservation()
