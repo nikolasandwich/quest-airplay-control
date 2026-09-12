@@ -7,7 +7,7 @@ public class SettleControllerTest {
     @Test public void convergesInBoundedSimulationWithDifferentHostGains(){
         for(double gain:new double[]{.5,1,2,3}) {
             SettleController c=new SettleController();c.target(120,120,0);double x=80,y=85;int count=0;
-            for(long t=0;t<10500;t+=150){var step=c.observe(x,y,t,t,true,true,true);if(step!=null){assertTrue(Math.abs(step.x)<=12);assertTrue(Math.abs(step.y)<=12);x+=step.x*gain;y+=step.y*gain;count++;}}
+            for(long t=0;t<10500;t+=150){var step=c.observe(x,y,t,t,true,true,true);if(step!=null){assertTrue(Math.abs(step.x)<=24);assertTrue(Math.abs(step.y)<=24);x+=step.x*gain;y+=step.y*gain;count++;}}
             assertTrue("gain="+gain,Math.hypot(120-x,120-y)<=3);assertTrue(count<=24);
         }
     }
@@ -62,5 +62,31 @@ public class SettleControllerTest {
         for(long t=0;t<20000;t+=400){var step=c.observe(x,y,t,t,true,true,true);if(step!=null){x+=step.x*.1;y+=step.y*.1;count++;}}
         assertTrue(count>0);assertTrue(count<=24);
         assertNull(c.observe(x,y,20500,20500,true,true,true));
+    }
+    @Test public void firstCorrectionStartsAfterOneHundredMilliseconds(){
+        SettleController c=new SettleController();c.target(200,200,0);
+        assertNull(c.observe(50,50,99,99,true,true,true));
+        var step=c.observe(50,50,100,100,true,true,true);
+        assertNotNull(step);assertEquals(24,step.x);assertEquals(24,step.y);
+    }
+    @Test public void visibleFeedbackCanAdvanceBeforeOldFixedDelay(){
+        SettleController c=new SettleController();c.target(200,200,0);
+        assertNotNull(c.observe(50,50,100,100,true,true,true));
+        assertNull(c.observe(51,50,200,200,true,true,true));
+        assertNotNull(c.observe(74,74,220,220,true,true,true));
+    }
+    @Test public void delayedFeedbackAndHostGainGridConverges(){
+        for(int delay:new int[]{0,100,250,400})for(double gain:new double[]{.5,1,2,3}){
+            SettleController c=new SettleController();c.target(200,200,0);
+            double x=80,y=85;int count=0;
+            java.util.ArrayList<double[]> history=new java.util.ArrayList<>();
+            for(long t=0;t<=10500;t+=20){
+                history.add(new double[]{t,x,y});double ox=80,oy=85;
+                for(double[] h:history){if(h[0]>t-delay)break;ox=h[1];oy=h[2];}
+                if(t%60==0){var step=c.observe(ox,oy,t,t,true,true,true);if(step!=null){x+=step.x*gain;y+=step.y*gain;count++;}}
+            }
+            assertTrue("delay="+delay+" gain="+gain+" error="+Math.hypot(200-x,200-y),Math.hypot(200-x,200-y)<=3);
+            assertTrue(count<=24);
+        }
     }
 }

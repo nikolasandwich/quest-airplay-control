@@ -27,6 +27,8 @@ class RayAlignment(
     private var targetX = Double.NaN
     private var targetY = Double.NaN
     private var rayTime = 0L
+    private var lastTimingLog = 0L
+    private var pixels = IntArray(0) // Sampling worker only.
     var enabled = false; private set
     var status = ""; private set
     fun setEnabled(value: Boolean) {
@@ -46,7 +48,7 @@ class RayAlignment(
     }
     private fun schedule() {
         main.removeCallbacks(pump)
-        if (!closed && enabled) main.postDelayed(pump,150)
+        if (!closed && enabled) main.postDelayed(pump,60)
     }
     private val pump = object : Runnable {
         override fun run() {
@@ -61,22 +63,31 @@ class RayAlignment(
             busy=true
             try {
                 PixelCopy.request(surface.holder.surface,bitmap,{ code ->
+                    val copiedAt=SystemClock.uptimeMillis()
                     val matches=try { if(code==PixelCopy.SUCCESS) {
-                        val pixels=IntArray(w*h);bitmap.getPixels(pixels,0,w,0,0,w,h)
+                        if (pixels.size!=w*h) pixels=IntArray(w*h)
+                        bitmap.getPixels(pixels,0,w,0,0,w,h)
                         detector.detect(pixels,w,h)
                     } else emptyList() } catch (e: RuntimeException) {
                         android.util.Log.w("RayAlignment","Pointer detection unavailable",e)
                         emptyList()
                     } finally { bitmap.recycle() }
+                    val detectedAt=SystemClock.uptimeMillis()
                     main.post {
                         busy=false
                         if (!closed && enabled && generation==epoch && allowed()) {
                             val now=SystemClock.uptimeMillis()
                             val trusted=identity.update(matches,targetX,targetY,requestTime)
+                            if(now-lastTimingLog>=1000){
+                                lastTimingLog=now
+                                android.util.Log.i("RayAlignment","observation copyResult=$code candidates=${matches.size} trusted=$trusted copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime}")
+                            }
                             if (trusted && matches.size==1) {
                                 val point=matches[0]
                                 val step=policy.observe(point.x.toDouble(),point.y.toDouble(),requestTime,now,true,true,hid()?.canMovePointer()==true)
                                 if (step!=null && hid()?.movePointer(step.x,step.y)!=true) policy.rejected()
+                                if (step!=null) android.util.Log.i("RayAlignment",
+                                    "correction dx=${step.x} dy=${step.y} error=${kotlin.math.hypot(targetX-point.x,targetY-point.y)} shape=${point.score} copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime} state=${policy.status}")
                                 status=policy.status
                             } else {
                                 // Losing identity cancels a pending correction; reacquisition needs new user motion.

@@ -11,8 +11,10 @@ public final class SettleController {
     private int steps,stalled,alignedFrames;
     private boolean blocked;
     private boolean responseEvaluated;
+    private double commandX,commandY,gain=1;
+    private int commandDx,commandDy;
     public String status="请移动射线";
-    public void reset(){changedAt=started=lastCommand=lastFrame=-1;steps=stalled=alignedFrames=0;blocked=false;responseEvaluated=false;lastError=Double.NaN;status="请移动射线";}
+    public void reset(){changedAt=started=lastCommand=lastFrame=-1;steps=stalled=alignedFrames=0;blocked=false;responseEvaluated=false;lastError=Double.NaN;gain=1;status="请移动射线";}
     public void target(double x,double y,long now){
         if(!Double.isFinite(x)||!Double.isFinite(y)){reset();return;}
         if(changedAt<0||Math.hypot(x-tx,y-ty)>3){reset();tx=x;ty=y;changedAt=now;status="等待射线停稳";}
@@ -22,10 +24,16 @@ public final class SettleController {
         if(!allowed||!trusted||!Double.isFinite(x)||!Double.isFinite(y)||frameTime>now||now-frameTime>250){block("识别丢失或输入暂停，请重新移动射线");return null;}
         if(frameTime<=lastFrame)return null;
         lastFrame=frameTime;
-        if(now-changedAt<400){status="等待射线停稳";return null;}
+        if(now-changedAt<100){status="等待射线停稳";return null;}
         if(started<0)started=now;
         if(now-started>10000||steps>=24){block("达到校正上限，请重新移动射线");return null;}
-        if(lastCommand>=0&&now-lastCommand<350)return null;
+        // PixelCopy timestamps are local observations, not remote presentation times.
+        // Wait for visible displacement before issuing another command; a fresh copy alone
+        // does not establish that AirPlay has carried the previous command back.
+        if(lastCommand>=0){
+            if(now-lastCommand<100)return null;
+            if(Math.hypot(x-commandX,y-commandY)<2 && now-lastCommand<450)return null;
+        }
         double error=Math.hypot(tx-x,ty-y);
         if(error<=3){if(++alignedFrames>=2){blocked=true;status="位置已接近（约3像素内）";}return null;}
         alignedFrames=0;
@@ -33,14 +41,21 @@ public final class SettleController {
             responseEvaluated=true;
             stalled=error>=lastError-.3?stalled+1:0;
             if(stalled>=3){block("未持续接近目标，已停止校正");return null;}
+            double observedGain=((x-commandX)*commandDx+(y-commandY)*commandDy)/
+                    (commandDx*commandDx+commandDy*commandDy);
+            if(observedGain>=.25&&observedGain<=4)gain=.5*gain+.5*observedGain;
         }
         if(!transportReady)return null;
-        int dx=quantize((tx-x)*.35),dy=quantize((ty-y)*.35);
-        if(dx==0&&dy==0)return null;
-        lastError=error;lastCommand=now;responseEvaluated=false;steps++;status="正在接近目标 "+steps+"/24";
+        int cap=error>80?24:error>20?12:4;
+        int dx=quantize((tx-x)*.35/gain,cap),dy=quantize((ty-y)*.35/gain,cap);
+        if(dx==0&&dy==0){
+            if(Math.abs(tx-x)>=Math.abs(ty-y))dx=tx>x?1:-1;
+            else dy=ty>y?1:-1;
+        }
+        commandX=x;commandY=y;commandDx=dx;commandDy=dy;lastError=error;lastCommand=now;responseEvaluated=false;steps++;status="正在接近目标 "+steps+"/24";
         return new Step(dx,dy);
     }
-    private int quantize(double v){return (int)Math.max(-12,Math.min(12,Math.round(v)));}
+    private int quantize(double v,int cap){return (int)Math.max(-cap,Math.min(cap,Math.round(v)));}
     public void rejected(){block("传输未接受，已停止校正");}
     private void block(String text){blocked=true;status=text;}
 }

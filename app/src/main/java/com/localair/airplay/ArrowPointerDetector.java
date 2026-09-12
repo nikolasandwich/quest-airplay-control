@@ -5,6 +5,12 @@ import java.util.List;
 
 /** Arrow-shape candidates for 720px video frames. Scores are not identity probabilities. */
 public final class ArrowPointerDetector {
+    // Owned by the single sampling worker. Reuse full-frame scratch buffers to
+    // avoid several megabytes of temporary allocations on every observation.
+    private int[] gray=new int[0],sum=new int[0],queue=new int[0];
+    private byte[] polarity=new byte[0];
+    private boolean[] seen=new boolean[0];
+    private final int[] points=new int[120];
     public static final class Candidate {
         public final int x,y,width,height;
         public final double score;
@@ -19,7 +25,10 @@ public final class ArrowPointerDetector {
     public List<Candidate> detect(int[] pixels,int width,int height) {
         if(width<20||height<20||width>720||height>720||pixels.length!=width*height)throw new IllegalArgumentException();
         int n=pixels.length,stride=width+1;
-        int[] gray=new int[n],sum=new int[(width+1)*(height+1)];
+        if(gray.length!=n){gray=new int[n];queue=new int[n];polarity=new byte[n];seen=new boolean[n];}
+        if(sum.length!=(width+1)*(height+1))sum=new int[(width+1)*(height+1)];
+        else java.util.Arrays.fill(sum,0);
+        java.util.Arrays.fill(seen,false);
         for(int y=0;y<height;y++) {
             int row=0;
             for(int x=0;x<width;x++) {
@@ -28,14 +37,12 @@ public final class ArrowPointerDetector {
                 gray[y*width+x]=value;row+=value;sum[(y+1)*stride+x+1]=sum[y*stride+x+1]+row;
             }
         }
-        byte[] polarity=new byte[n];
         for(int y=0;y<height;y++)for(int x=0;x<width;x++) {
             int l=Math.max(0,x-8),r=Math.min(width,x+9),t=Math.max(0,y-8),b=Math.min(height,y+9);
             int area=(r-l)*(b-t),local=sum[b*stride+r]-sum[t*stride+r]-sum[b*stride+l]+sum[t*stride+l];
             int contrast=gray[y*width+x]*area-local;
             polarity[y*width+x]=(byte)(contrast>18*area?1:contrast< -18*area?-1:0);
         }
-        boolean[] seen=new boolean[n];int[] queue=new int[n],points=new int[120];
         List<Candidate> candidates=new ArrayList<>();
         for(int seed=0;seed<n;seed++) {
             if(seen[seed]||polarity[seed]==0)continue;
