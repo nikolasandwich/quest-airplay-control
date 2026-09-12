@@ -254,10 +254,11 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         serviceReady=true;
         note("HID, Battery and Device Information services ready");
         if(host!=null){
-            needsReconnect=true;
-            disarm();
-            note("Link predates service registration: reconnecting HID once; pairing retained");
-            server.cancelConnection(host);
+            // Bonded hosts may reconnect while addService callbacks are still pending.
+            // A connected transport is not a reason to tear it down: input remains gated
+            // by serviceReady, the current-schema CCCD, bond state and explicit arming.
+            note("Early host retained after service registration; subscribed="+subscribed+" armed="+armed);
+            changed();
             return;
         }
         restartAdvertising();
@@ -265,7 +266,11 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     public void start() {
         if(!permitted()){note("Bluetooth permission required");return;}
-        if(server!=null){note("Already started");return;}
+        if(server!=null){
+            if(serviceReady&&host==null)restartAdvertising();
+            else note("Mouse service state: ready="+serviceReady+" host="+(host!=null)+" subscribed="+subscribed+" suspended="+suspended+" protocol="+protocolMode+" focused="+focused+" armed="+armed+" reconnect="+needsReconnect);
+            changed();return;
+        }
         if(adapter==null||!adapter.isEnabled()||adapter.getBluetoothLeAdvertiser()==null){note("BLE peripheral unavailable");return;}
         try {
             server=getSystemService(BluetoothManager.class).openGattServer(this,createCallback(++generation));

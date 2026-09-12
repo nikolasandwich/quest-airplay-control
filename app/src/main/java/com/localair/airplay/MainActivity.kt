@@ -53,6 +53,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var mainPage: View
     private lateinit var chromeLock: Button
     private var chromeHidden=false
+    private var lockHovered=false
+    private val hideLock=Runnable {
+        if(chromeHidden&&!lockHovered)chromeLock.alpha=0f
+    }
     private val settingsBack = object : androidx.activity.OnBackPressedCallback(false) {
         override fun handleOnBackPressed(){closeSettingsPage()}
     }
@@ -172,6 +176,23 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 setColor(Color.argb(190,35,43,56));cornerRadius=24*resources.displayMetrics.density
             }
             setOnClickListener {chromeHidden=!chromeHidden;rayView.resetInput();updateChrome()}
+            setOnHoverListener {_,event ->
+                lockHovered=event.actionMasked!=MotionEvent.ACTION_HOVER_EXIT
+                revealLock();false
+            }
+            setOnFocusChangeListener {_,_ ->revealLock()}
+            var revealOnly=false
+            setOnTouchListener {_,event ->
+                if(event.actionMasked==MotionEvent.ACTION_DOWN){
+                    revealOnly=alpha==0f
+                    revealLock()
+                }
+                val consume=revealOnly
+                if(event.actionMasked==MotionEvent.ACTION_UP||event.actionMasked==MotionEvent.ACTION_CANCEL){
+                    revealOnly=false;revealLock()
+                }
+                consume
+            }
         }
         val lockSize=(48*resources.displayMetrics.density).toInt()
         pages.addView(chromeLock,FrameLayout.LayoutParams(lockSize,lockSize,Gravity.END or Gravity.CENTER_VERTICAL).apply {
@@ -646,6 +667,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun onDestroy() {
+        if(::chromeLock.isInitialized)chromeLock.removeCallbacks(hideLock)
         rayAlignment.close()
         pointerObservation.close()
         attachedHid?.detachUi(inputOwner)
@@ -676,6 +698,16 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         chromeLock.text=if(chromeHidden)"\uD83D\uDD12" else "\uD83D\uDD13"
         chromeLock.contentDescription=AppText.get(if(chromeHidden)R.string.show_controls else R.string.hide_controls)
         chromeLock.tooltipText=chromeLock.contentDescription
+        revealLock()
+    }
+
+    private fun revealLock(){
+        if(!::chromeLock.isInitialized)return
+        chromeLock.removeCallbacks(hideLock)
+        chromeLock.alpha=1f
+        if(chromeHidden&&!lockHovered&&!settingsOpen&&!isInPictureInPictureMode){
+            chromeLock.postDelayed(hideLock,3000)
+        }
     }
 
     private fun enterPip() {
