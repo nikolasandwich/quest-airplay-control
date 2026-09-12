@@ -327,13 +327,28 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             val inset=(24*resources.displayMetrics.density).toInt()
             setPadding(inset,inset,inset,inset)
         }
-        intArrayOf(R.string.main_buttons_description,R.string.pointer_buttons_description,
-            R.string.ray_setting_description,R.string.alignment_setting_description,
-            R.string.speed_setting_description,R.string.app_language_description,
-            R.string.restore_control_does_not_center_the_ipad).forEach {id ->
-            content.addView(TextView(this).apply {
-                text=AppText.get(id);textSize=17f;setPadding(0,0,0,24)
-            })
+        val rows=listOf(
+            listOf(R.string.connect_mouse,R.string.enable_control,R.string.pause_control,R.string.scroll_up,R.string.scroll_down) to R.string.main_buttons_description,
+            listOf(R.string.drag_left,R.string.click_pointer,R.string.drag_right) to R.string.pointer_buttons_description,
+            listOf(R.string.relative_ray_control) to R.string.ray_setting_description,
+            listOf(R.string.alignment_on) to R.string.alignment_setting_description,
+            listOf(R.string.assist_responsive,R.string.assist_steady) to R.string.speed_setting_description,
+            listOf(R.string.language_settings) to R.string.app_language_description,
+            listOf(R.string.restore_control) to R.string.restore_control_does_not_center_the_ipad)
+        rows.forEachIndexed {index,(labels,description) ->
+            content.addView(LinearLayout(this).apply {
+                orientation=LinearLayout.HORIZONTAL
+                setBackgroundColor(if(index%2==0)Color.rgb(35,43,56) else Color.rgb(24,31,42))
+                fun cell(value:String,weight:Float){
+                    addView(TextView(this@MainActivity).apply {
+                        text=value;textSize=16f;setTextColor(Color.WHITE)
+                        val pad=(12*resources.displayMetrics.density).toInt()
+                        setPadding(pad,pad,pad,pad)
+                    },LinearLayout.LayoutParams(0,-2,weight))
+                }
+                cell(labels.joinToString("\n"){AppText.get(it)},1f)
+                cell(AppText.get(description),2f)
+            },LinearLayout.LayoutParams(-1,-2))
         }
         android.app.AlertDialog.Builder(this).setTitle(AppText.get(R.string.button_guide))
             .setView(android.widget.ScrollView(this).apply {addView(content)})
