@@ -10,13 +10,32 @@ import android.view.View
 import android.view.ViewConfiguration
 
 /** Optional relative pointer surface. Hover never presses a remote button. */
-class RayPointerView(context: Context, private val hid: () -> HidController?) : View(context) {
+class RayPointerView(context: Context, private val hid: () -> RayInputTransport?) : View(context) {
     var observer: ((Float, Float, Int, Int, Long) -> Unit)? = null
     var onReset: (() -> Unit)? = null
     var calibration: PointerCalibration? = null
     var onCalibrationConfirm: (() -> Unit)? = null
     var onReport: ((Int,Int,Long,Boolean)->Unit)? = null
     private val motion = RayDeltaEngine()
+    private var sampleStart = 0L
+    private var samples = 0
+    private var busySamples = 0
+    private var staleSamples = 0
+    private var sentReports = 0
+    private var sentUnits = 0L
+    private var ackCount = 0
+    private var ackTotal = 0L
+    private var ackMax = 0L
+    private var eventAgeMax = 0L
+    private fun recordSample(now: Long, age: Long, busy: Boolean, stale: Boolean) {
+        if(sampleStart==0L)sampleStart=now
+        samples++; if(busy)busySamples++; if(stale)staleSamples++
+        eventAgeMax=maxOf(eventAgeMax,age)
+        if(now-sampleStart>=5000){
+            android.util.Log.i("RayInputStats", "windowMs=${now-sampleStart} events=$samples busy=$busySamples stale=$staleSamples reports=$sentReports units=$sentUnits eventAgeMaxMs=$eventAgeMax ackCount=$ackCount ackMeanMs=${if(ackCount>0)ackTotal/ackCount else 0} ackMaxMs=$ackMax width=$width height=$height unitsPerPixel=${800.0/width.coerceAtLeast(1)} discardedUnitsTotal=${motion.discardedUnits()} mergedUnitsTotal=${motion.mergedUnits()}")
+            sampleStart=now; samples=0;busySamples=0;staleSamples=0;sentReports=0;sentUnits=0;ackCount=0;ackTotal=0;ackMax=0;eventAgeMax=0
+        }
+    }
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.CYAN; strokeWidth = 2f }
     private var aimX = -1f
     private var aimY = -1f
@@ -41,7 +60,7 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
     private fun inside(x: Float, y: Float) = x.isFinite() && y.isFinite() && x >= 0 && y >= 0 && x < width && y < height
     private fun aim(x: Float, y: Float) { aimX = x; aimY = y; invalidate() }
     override fun onHoverEvent(event: MotionEvent): Boolean {
-        if (!isEnabled) return false
+        if (!isEnabled) { resetInput(); return false }
         when (event.actionMasked) {
             MotionEvent.ACTION_HOVER_ENTER -> { resetInput(); requestFocus(); aim(event.x, event.y) }
             MotionEvent.ACTION_HOVER_MOVE -> {
@@ -49,10 +68,22 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
                 aim(event.x, event.y)
                 observer?.invoke(event.x,event.y,width,height,event.eventTime)
                 val controller = hid()
+                val now=android.os.SystemClock.uptimeMillis()
+                val age=(now-event.eventTime).coerceAtLeast(0)
+                val eligible=!touching && calibration?.awaitingReference()!=true && controller?.canTrackPointer()==true
+                val ready=controller?.canMovePointer()==true
+                recordSample(now,age,eligible&&!ready,age>RayDeltaEngine.MAX_PENDING_MS)
+                if(age>RayDeltaEngine.MAX_PENDING_MS){motion.reset();return true}
                 val delta = motion.event(event.x, event.y, width, height, event.eventTime,
-                    !touching && calibration?.awaitingReference()!=true && controller?.canMovePointer() == true,calibration?.gain())
+                    eligible,ready,calibration?.gain())
                 if (delta.x!=0 || delta.y!=0) {
-                    val sent=controller?.movePointer(delta.x,delta.y) { ok -> onReport?.invoke(delta.x,delta.y,android.os.SystemClock.uptimeMillis(),ok) }==true
+                    val sent=controller?.movePointer(delta.x,delta.y) { ok ->
+                        val completedAt=android.os.SystemClock.uptimeMillis()
+                        if(ok){ackCount++;ackTotal+=completedAt-now;ackMax=maxOf(ackMax,completedAt-now)}
+                        else motion.reset()
+                        onReport?.invoke(delta.x,delta.y,completedAt,ok)
+                    }==true
+                    if(sent){sentReports++;sentUnits+=kotlin.math.abs(delta.x).toLong()+kotlin.math.abs(delta.y)}
                     if(!sent){motion.reset();onReport?.invoke(delta.x,delta.y,android.os.SystemClock.uptimeMillis(),false)}
                 }
             }
@@ -100,6 +131,7 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
         return true
     }
     override fun performClick(): Boolean {
+        motion.reset()
         if(calibration?.isActive==true){onCalibrationConfirm?.invoke();motion.reset();return true}
         calibration?.invalidateSegment()
         onReset?.invoke()
@@ -112,6 +144,10 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
         if (!gainFocus) resetInput()
     }
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) { resetInput() }
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if(!hasWindowFocus)resetInput()
+    }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (!inside(aimX,aimY)) return

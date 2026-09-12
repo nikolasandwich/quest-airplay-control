@@ -14,7 +14,7 @@ import java.util.*;
 /** Service-owned BLE HID. All state and GATT callbacks run on the main looper.
  * GATT layout and report map retain the validated HID 0.1.12 schema. */
 @android.annotation.SuppressLint("MissingPermission")
-public final class HidController extends ContextWrapper {
+public final class HidController extends ContextWrapper implements RayInputTransport {
     private int generation;
     private boolean focused;
     private boolean needsReconnect;
@@ -55,7 +55,11 @@ public final class HidController extends ContextWrapper {
     }
     public boolean isArmed(){return armed;}
     public boolean canMovePointer(){
-        return armed&&focused&&!needsReconnect&&!releaseUnconfirmed&&serviceReady&&server!=null&&host!=null&&subscribed&&!suspended&&protocolMode==1&&!notificationPending&&gestureRemaining==0&&!pointerAction.active()&&host.getBondState()==BluetoothDevice.BOND_BONDED;
+        return canTrackPointer()&&!notificationPending;
+    }
+    /** A busy notification is transient; all other input gates revoke accumulated motion. */
+    public boolean canTrackPointer(){
+        return armed&&focused&&!needsReconnect&&!releaseUnconfirmed&&serviceReady&&server!=null&&host!=null&&subscribed&&!suspended&&protocolMode==1&&gestureRemaining==0&&!pointerAction.active()&&host.getBondState()==BluetoothDevice.BOND_BONDED;
     }
     /** Only a foreground video ray event may request bounded relative movement. */
     public boolean movePointer(int x,int y){
