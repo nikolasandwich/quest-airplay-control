@@ -20,7 +20,20 @@ class RayAlignment(
     private val worker = Handler(thread.looper)
     private val detector = ArrowPointerDetector()
     private val identity = PointerIdentityTracker()
-    private val policy = SettleController()
+    private val policy = SettleController().apply { setFast(true) }
+    fun isFast()=policy.isFast
+    fun setFast(value:Boolean){policy.setFast(value);invalidateTarget()}
+    fun toggleSpeed(){setFast(!policy.isFast);changed()}
+    val calibration = PointerCalibration()
+    var interactionIdle: () -> Boolean = { true }
+    private fun samplingNeeded()=enabled || calibration.isActive || calibration.hasGain()
+    fun beginCalibration(){enabled=false;calibration.begin(SystemClock.uptimeMillis());invalidateTarget();main.removeCallbacks(pump);main.post(pump);changed()}
+    fun confirmCalibration(){
+        calibration.confirm(targetX,targetY,SystemClock.uptimeMillis())
+        publish(calibration.status)
+    }
+    fun cancelCalibration(){calibration.cancel();changed()}
+    fun rayReport(x:Int,y:Int,time:Long,ok:Boolean){if(!closed)calibration.report(x,y,time,ok)}
     private var epoch = 0
     private var busy = false
     private var closed = false
@@ -36,12 +49,12 @@ class RayAlignment(
         enabled = value
         invalidateTarget()
         main.removeCallbacks(pump)
-        if (value) main.post(pump)
+        if (samplingNeeded()) main.post(pump)
         changed()
     }
-    fun invalidateTarget() { epoch++; targetX=Double.NaN; targetY=Double.NaN; identity.reset(); policy.reset(); status="请移动射线识别真实指针" }
+    fun invalidateTarget() { epoch++; targetX=Double.NaN; targetY=Double.NaN; identity.reset(); policy.reset(); calibration.invalidateSegment(); status="请移动射线识别真实指针" }
     fun onRay(x: Float,y: Float,w: Int,h: Int,time: Long) {
-        if (!enabled || w<=0 || h<=0) return
+        if (!samplingNeeded() || w<=0 || h<=0) return
         val scale=minOf(1.0,720.0/maxOf(w,h))
         targetX=(x*scale).coerceIn(0.0,(w*scale).toInt()-1.0)
         targetY=(y*scale).coerceIn(0.0,(h*scale).toInt()-1.0);rayTime=time
@@ -57,14 +70,15 @@ class RayAlignment(
     }
     private fun schedule() {
         main.removeCallbacks(pump)
-        if (!closed && enabled) main.postDelayed(pump,60)
+        if (!closed && samplingNeeded()) main.postDelayed(pump,if(enabled&&policy.isFast)30 else if(enabled||calibration.isActive)60 else 150)
     }
     private val pump = object : Runnable {
         override fun run() {
-            if (closed || !enabled) return
+            if (closed || !samplingNeeded()) return
             val gate=gateReason()
             if (gate!=null || !targetX.isFinite()) {
                 identity.reset();policy.reset()
+                calibration.invalidateSegment()
                 if(targetX.isFinite())policy.target(targetX,targetY,SystemClock.uptimeMillis())
                 publish(gate ?: "请指向投屏画面")
                 schedule();return
@@ -72,6 +86,7 @@ class RayAlignment(
             if (busy) { schedule(); return }
             val surface=view(); val scale=minOf(1f,720f/maxOf(surface.width,surface.height).coerceAtLeast(1))
             val w=(surface.width*scale).toInt(); val h=(surface.height*scale).toInt()
+            calibration.geometry(w,h)
             if (w<20 || h<20 || !surface.holder.surface.isValid) { invalidateTarget(); schedule();return }
             val bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
             val requestTime=SystemClock.uptimeMillis(); val generation=epoch
@@ -90,16 +105,25 @@ class RayAlignment(
                     val detectedAt=SystemClock.uptimeMillis()
                     main.post {
                         busy=false
-                        if (!closed && enabled && generation==epoch && gateReason()==null) {
+                        if (!closed && samplingNeeded() && generation==epoch && gateReason()==null) {
                             val now=SystemClock.uptimeMillis()
                             val fresh=now-requestTime in 0..250
                             val trusted=if(fresh)identity.update(matches,targetX,targetY,requestTime) else {identity.reset();false}
                             val point=matches.singleOrNull()
                             val distance=point?.let{kotlin.math.hypot(policy.targetX()-it.x,policy.targetY()-it.y)}
                             val ready=hid()?.canMovePointer()==true
-                            if (trusted && matches.size==1) {
+                            val calibrationBefore=calibration.status
+                            calibration.observe(point?.x?.toDouble() ?: Double.NaN,point?.y?.toDouble() ?: Double.NaN,now,trusted,ready&&interactionIdle())
+                            if(calibration.status!=calibrationBefore){
+                                android.util.Log.i("PointerCalibration","state=${calibration.status} active=${calibration.isActive} hasGain=${calibration.hasGain()} hasPosition=${calibration.hasPosition()}")
+                                changed()
+                            }
+                            if(calibration.isActive || !enabled){
+                                publish(calibration.status + if(!trusted) " · ${identity.reason}" else "")
+                            } else if (trusted && matches.size==1) {
                                 val confirmed=matches[0]
                                 val step=policy.observe(confirmed.x.toDouble(),confirmed.y.toDouble(),requestTime,now,true,true,ready)
+                                if(step!=null)calibration.externalAction()
                                 if (step!=null && hid()?.movePointer(step.x,step.y)!=true) policy.rejected()
                                 if (step!=null) android.util.Log.i("RayAlignment",
                                     "correction target=${policy.targetRevision} dx=${step.x} dy=${step.y} error=$distance shape=${confirmed.score} copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime} state=${policy.status}")

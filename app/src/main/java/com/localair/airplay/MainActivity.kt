@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var pointerObservation: PointerObservation
     private lateinit var rayAlignment: RayAlignment
     private lateinit var alignButton: Button
+    private var pendingCalibrationStart=false
 
     private val svc get() = AirPlayService.instance
 
@@ -70,6 +71,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 else -> null
             }
         }) { updateHidUi() }
+        val pointerPrefs=getSharedPreferences("pointer_ui",MODE_PRIVATE)
+        rayAlignment.setFast(pointerPrefs.getBoolean("fast_alignment",true))
+        rayAlignment.calibration.intervalMinutes(if(pointerPrefs.getInt("calibration_minutes",5)==3)3 else 5)
         rayMode = getSharedPreferences("pointer_ui", MODE_PRIVATE).getBoolean("relative_ray_enabled", true)
         @Suppress("DEPRECATION")
         window.addFlags(
@@ -99,6 +103,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             FrameLayout.LayoutParams.MATCH_PARENT,
         ))
         rayView = RayPointerView(this) { attachedHid }.apply { visibility = View.GONE }
+        rayView.calibration=rayAlignment.calibration
+        rayAlignment.interactionIdle={rayView.isInputIdle()}
+        rayView.onCalibrationConfirm=rayAlignment::confirmCalibration
+        rayView.onReport=rayAlignment::rayReport
         rayView.observer = { x,y,w,h,time ->
             pointerObservation.recordRay(x,y,w,h,time)
             rayAlignment.onRay(x,y,w,h,time)
@@ -126,12 +134,18 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
         action(primary, "连接鼠标") { connectMouse() }
         controlButton = action(primary, "启用控制") { svc?.hid?.toggleArmed(); updateHidUi() }
-        previousButton = action(primary, "上一条") { svc?.hid?.scrollPage(1) }
-        nextButton = action(primary, "下一条") { svc?.hid?.scrollPage(-1) }
-        action(primary, "采样3秒") { startPointerObservation() }
-        leftButton = action(pointer, "左滑（拖拽）") { svc?.hid?.dragPointer(-1) }
-        clickButton = action(pointer, "点击当前指针") { svc?.hid?.clickPointer() }
-        rightButton = action(pointer, "右滑（拖拽）") { svc?.hid?.dragPointer(1) }
+        previousButton = action(primary, "上一条") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(1) }
+        nextButton = action(primary, "下一条") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(-1) }
+        action(primary, "校准") { showCalibration() }
+        lateinit var speedButton: Button
+        speedButton=action(primary,if(rayAlignment.isFast())"跟手优先" else "稳定优先") {
+            rayAlignment.toggleSpeed()
+            getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("fast_alignment",rayAlignment.isFast()).apply()
+            speedButton.text=if(rayAlignment.isFast())"跟手优先" else "稳定优先"
+        }
+        leftButton = action(pointer, "左滑（拖拽）") { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(-1) }
+        clickButton = action(pointer, "点击当前指针") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.clickPointer() }
+        rightButton = action(pointer, "右滑（拖拽）") { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(1) }
         rayButton = action(pointer, "相对射线：关") {
             rayMode = !rayMode
             getSharedPreferences("pointer_ui", MODE_PRIVATE).edit()
@@ -193,15 +207,42 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         hidStatus.text = hid.statusText()
         if (rayMode && hid.isArmed) hidStatus.text = "相对射线：移动射线带动指针 · 扳机/确认键点击当前指针（非绝对定位）"
         if (rayAlignment.enabled) hidStatus.text = "停稳对齐（实验）：${rayAlignment.status} · 不自动点击"
+        if(rayAlignment.calibration.isActive)hidStatus.text=rayAlignment.status
+        else if(hid.isArmed&&rayAlignment.calibration.status!="尚未校准")hidStatus.text=rayAlignment.calibration.status + if(rayAlignment.enabled) " · ${rayAlignment.status}" else ""
         alignButton.text = if (rayAlignment.enabled) "停稳对齐：开" else "停稳对齐：关"
         rayButton.text = if (rayMode) "相对射线：开" else "相对射线：关"
         controlButton.text = if (hid.isArmed) "暂停控制" else "启用控制"
-        previousButton.isEnabled = hid.isArmed
-        nextButton.isEnabled = hid.isArmed
-        leftButton.isEnabled = hid.isArmed
-        rightButton.isEnabled = hid.isArmed
-        clickButton.isEnabled = hid.isArmed
+        val actionsAllowed=hid.isArmed&&!rayAlignment.calibration.isActive
+        previousButton.isEnabled = actionsAllowed
+        nextButton.isEnabled = actionsAllowed
+        leftButton.isEnabled = actionsAllowed
+        rightButton.isEnabled = actionsAllowed
+        clickButton.isEnabled = actionsAllowed
         refreshVideoState()
+    }
+
+    private fun showCalibration(){
+        val calibration=rayAlignment.calibration
+        val dialog=android.app.AlertDialog.Builder(this)
+            .setTitle("校准位置与移动速度")
+            .setSingleChoiceItems(arrayOf("每3分钟复核可靠样本","每5分钟复核可靠样本（默认）"),if(calibration.intervalMinutes()==3)0 else 1){_,which ->
+                calibration.intervalMinutes(if(which==0)3 else 5)
+                getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putInt("calibration_minutes",calibration.intervalMinutes()).apply()
+            }
+            .setPositiveButton("开始 / 重新校准"){_,_ ->
+                pendingCalibrationStart=true
+            }
+            .setNeutralButton("取消当前校准"){_,_ -> rayAlignment.cancelCalibration()}
+            .setNegativeButton("关闭",null).create()
+        dialog.setOnDismissListener {window.decorView.post { startPendingCalibration() }}
+        dialog.show()
+    }
+    private fun startPendingCalibration(){
+        if(!pendingCalibrationStart || !hasWindowFocus())return
+        pendingCalibrationStart=false
+        if(attachedHid?.isArmed!=true)attachedHid?.toggleArmed()
+        rayAlignment.beginCalibration()
+        android.widget.Toast.makeText(this,"请使用简单背景，按提示移动并停稳。最后指向真实指针按确认；校准期间不向 iPad 点击。",android.widget.Toast.LENGTH_LONG).show()
     }
 
     private fun refreshVideoState() {
@@ -232,6 +273,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if(::rayAlignment.isInitialized && rayAlignment.calibration.isActive && event.isFromSource(android.view.InputDevice.SOURCE_JOYSTICK))return true
+        if(::rayAlignment.isInitialized && rayAlignment.calibration.isActive && event.actionMasked==MotionEvent.ACTION_SCROLL)return true
+        if(::rayAlignment.isInitialized && event.actionMasked==MotionEvent.ACTION_SCROLL)rayAlignment.calibration.externalAction()
         if (attachedHid?.onMotion(event) == true) return true
         return super.dispatchGenericMotionEvent(event)
     }
@@ -241,9 +285,13 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         attachedHid?.setFocused(inputOwner, hasFocus)
         if (!hasFocus && ::rayView.isInitialized) rayView.resetInput()
         if (!hasFocus && ::pointerObservation.isInitialized) pointerObservation.cancel()
+        if(hasFocus&&::rayAlignment.isInitialized)startPendingCalibration()
     }
 
     override fun onPause() {
+        pendingCalibrationStart=false
+        if(rayAlignment.calibration.isActive)rayAlignment.cancelCalibration()
+        rayAlignment.calibration.externalAction()
         rayAlignment.setEnabled(false)
         android.util.Log.i("AirPlayLifecycle", "pause surfaceReady=$surfaceReady")
         surfaceOwner?.let { svc?.video?.parkBeforeWindowStops(it) }

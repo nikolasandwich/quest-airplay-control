@@ -13,6 +13,9 @@ import android.view.ViewConfiguration
 class RayPointerView(context: Context, private val hid: () -> HidController?) : View(context) {
     var observer: ((Float, Float, Int, Int, Long) -> Unit)? = null
     var onReset: (() -> Unit)? = null
+    var calibration: PointerCalibration? = null
+    var onCalibrationConfirm: (() -> Unit)? = null
+    var onReport: ((Int,Int,Long,Boolean)->Unit)? = null
     private val motion = RayDeltaEngine()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.CYAN; strokeWidth = 2f }
     private var aimX = -1f
@@ -24,6 +27,7 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
     private var downTime = 0L
     private var confirmKey = -1
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
+    fun isInputIdle()=!touching && confirmKey == -1
 
     init {
         isFocusable = true; isFocusableInTouchMode = true; isClickable = true
@@ -46,8 +50,11 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
                 observer?.invoke(event.x,event.y,width,height,event.eventTime)
                 val controller = hid()
                 val delta = motion.event(event.x, event.y, width, height, event.eventTime,
-                    !touching && controller?.canMovePointer() == true)
-                if ((delta.x != 0 || delta.y != 0) && controller?.movePointer(delta.x, delta.y) != true) motion.reset()
+                    !touching && calibration?.awaitingReference()!=true && controller?.canMovePointer() == true,calibration?.gain())
+                if (delta.x!=0 || delta.y!=0) {
+                    val sent=controller?.movePointer(delta.x,delta.y) { ok -> onReport?.invoke(delta.x,delta.y,android.os.SystemClock.uptimeMillis(),ok) }==true
+                    if(!sent){motion.reset();onReport?.invoke(delta.x,delta.y,android.os.SystemClock.uptimeMillis(),false)}
+                }
             }
             MotionEvent.ACTION_HOVER_EXIT -> resetInput()
         }
@@ -60,6 +67,7 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
                 requestFocus(); motion.reset(); confirmKey = -1
                 touching = true; tap = inside(event.x, event.y)
                 downX = event.x; downY = event.y; aim(event.x, event.y)
+                if(calibration?.isActive==true)observer?.invoke(event.x,event.y,width,height,event.eventTime)
                 downTime = event.eventTime
             }
             MotionEvent.ACTION_MOVE -> {
@@ -92,6 +100,8 @@ class RayPointerView(context: Context, private val hid: () -> HidController?) : 
         return true
     }
     override fun performClick(): Boolean {
+        if(calibration?.isActive==true){onCalibrationConfirm?.invoke();motion.reset();return true}
+        calibration?.invalidateSegment()
         onReset?.invoke()
         super.performClick()
         if (isEnabled && hasWindowFocus() && inside(aimX,aimY)) hid()?.clickPointer()

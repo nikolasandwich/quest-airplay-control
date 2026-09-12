@@ -97,4 +97,23 @@ public class SettleControllerTest {
         assertTrue(c.status.contains("上限"));
         assertNull(c.observe(70,70,10600,10600,true,true,true));
     }
+    @Test public void fastModeWithDelayedFeedbackDroppedObservationsAndTargetChange(){
+        for(int delay:new int[]{0,100,250,400})for(double gain:new double[]{.5,1,2,3}){
+            SettleController c=new SettleController();c.setFast(true);c.target(190,190,0);
+            double x=80,y=85;java.util.ArrayList<double[]> history=new java.util.ArrayList<>();int count=0;
+            for(long t=0;t<=12000;t+=20){
+                if(t==1000)c.target(200,200,t);
+                history.add(new double[]{t,x,y});double ox=80,oy=85;
+                for(double[] h:history){if(h[0]>t-delay)break;ox=h[1];oy=h[2];}
+                if(t%60==0&&t%420!=0){var s=c.observe(ox,oy,t,t,true,true,true);if(s!=null){assertTrue(Math.abs(s.x)<=32&&Math.abs(s.y)<=32);x+=s.x*gain;y+=s.y*gain;count++;}}
+            }
+            assertTrue("delay="+delay+" gain="+gain+" error="+Math.hypot(200-x,200-y),Math.hypot(200-x,200-y)<=3);assertTrue(count<=48);
+        }
+    }
+    @Test public void fastStillWaitsForFeedbackAndStopsOnUntrustedInput(){
+        SettleController c=new SettleController();c.setFast(true);c.target(200,200,0);
+        assertNull(c.observe(50,50,59,59,true,true,true));assertNotNull(c.observe(50,50,60,60,true,true,true));
+        assertNull(c.observe(50,50,120,120,true,true,true));assertNull(c.observe(80,80,180,180,false,true,true));
+        assertNull(c.observe(80,80,600,600,true,true,true));
+    }
 }

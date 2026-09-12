@@ -57,9 +57,13 @@ public final class HidController extends ContextWrapper {
     }
     /** Only a foreground video ray event may request bounded relative movement. */
     public boolean movePointer(int x,int y){
+        return movePointer(x,y,null);
+    }
+    public interface ReportCompletion { void complete(boolean success); }
+    public boolean movePointer(int x,int y,ReportCompletion completion){
         if(!canMovePointer()||Math.abs((long)x)>32||Math.abs((long)y)>32)return false;
         if(x==0&&y==0)return true;
-        return transmit(0,x,y,0,null);
+        return transmit(0,x,y,0,null,completion);
     }
     public boolean isStarted(){return server!=null;}
     public String statusText(){
@@ -133,6 +137,7 @@ public final class HidController extends ContextWrapper {
     private int pointerEpoch, releaseAttempts;
     private boolean releaseUnconfirmed;
     private static final class PendingReport {
+        ReportCompletion completion;
         final PointerAction.Packet pointer;
         PendingReport(PointerAction.Packet pointer){this.pointer=pointer;}
     }
@@ -393,6 +398,7 @@ public final class HidController extends ContextWrapper {
         @Override public void onNotificationSent(BluetoothDevice d,int code){ handler.post(() -> { if(epoch!=generation || server==null || !d.equals(host))return;
             PendingReport completedReport=pendingReports.poll();notificationPending=!pendingReports.isEmpty();
             if(completedReport==null)return;
+            if(completedReport.completion!=null)completedReport.completion.complete(code==0);
             completed++;note("notification complete="+completed+" status="+code);
             if(completedReport.pointer!=null){
                 pointerAction.acknowledged(completedReport.pointer,code==0);
@@ -409,6 +415,9 @@ public final class HidController extends ContextWrapper {
         transmit(buttons,x,y,wheel,null);
     }
     private boolean transmit(int buttons,int x,int y,int wheel,PointerAction.Packet pointer){
+        return transmit(buttons,x,y,wheel,pointer,null);
+    }
+    private boolean transmit(int buttons,int x,int y,int wheel,PointerAction.Packet pointer,ReportCompletion completion){
         BluetoothDevice peer=host;BluetoothGattServer gatt=server;boolean boot=protocolMode==0;
         if(peer==null||gatt==null||!permitted())return false;
         if(pointer!=null && buttons==0)releaseAttempts++;
@@ -418,6 +427,7 @@ public final class HidController extends ContextWrapper {
         values.put(uuid(0x2a4d),new byte[]{(byte)buttons,0,0,0});
         values.put(uuid(0x2a33),new byte[]{(byte)buttons,0,0});
         PendingReport queued=new PendingReport(pointer);pendingReports.add(queued);notificationPending=true;
+        queued.completion=completion;
         boolean accepted=false;
         try {
             if(Build.VERSION.SDK_INT>=33){int code=gatt.notifyCharacteristicChanged(peer,input,false,data);accepted=code==0;note("mode="+(boot?"BOOT":"REPORT")+" bytes="+data.length+" buttons="+buttons+" x="+x+" y="+y+" wheel="+wheel+" send="+(++sent)+" status="+code);}

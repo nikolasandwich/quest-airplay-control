@@ -13,11 +13,19 @@ public final class RayDeltaEngine {
     private double remainderX, remainderY;
     public void reset() { previousTime=-1; remainderX=remainderY=0; }
     public Delta event(float x, float y, int width, int height, long time, boolean ready) {
+        return event(x,y,width,height,time,ready,null);
+    }
+    public Delta event(float x,float y,int width,int height,long time,boolean ready,PointerCalibration.Gain gain){
         if (!Float.isFinite(x)||!Float.isFinite(y)||width<=0||height<=0||
                 x<0||y<0||x>=width||y>=height) { reset(); return new Delta(0,0); }
         boolean baseline=previousTime<0||time<=previousTime||time-previousTime>150||
                 width!=previousWidth||height!=previousHeight;
         double dx=(x-previousX)*800.0/width, dy=(y-previousY)*800.0/width;
+        if(gain!=null){
+            double scale=Math.min(1,720.0/Math.max(width,height));
+            double speed=Math.hypot(x-previousX,y-previousY)*scale*1000/Math.max(1,time-previousTime);
+            dx=(x-previousX)*scale/gain.x(speed);dy=(y-previousY)*scale/gain.y(speed);
+        }
         previousX=x; previousY=y; previousWidth=width; previousHeight=height; previousTime=time;
         if (baseline||!ready) { remainderX=remainderY=0; return new Delta(0,0); }
         // A single discontinuity cannot fling the remote cursor; excess is discarded.
