@@ -47,6 +47,13 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var alignButton: Button
     private var pendingControlRestore=false
     private var lastWaitingDecision=""
+    private var settingsOpen=false
+    private var alignmentRequested=true
+    private lateinit var settingsPage: View
+    private lateinit var mainPage: View
+    private val settingsBack = object : androidx.activity.OnBackPressedCallback(false) {
+        override fun handleOnBackPressed(){closeSettingsPage()}
+    }
 
     private val svc get() = AirPlayService.instance
 
@@ -65,6 +72,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         pointerObservation = PointerObservation(this)
         rayAlignment = RayAlignment({ surfaceView }, { attachedHid }, {
             when {
+                settingsOpen -> AppText.get(R.string.app_settings)
                 !hasWindowFocus() -> AppText.get(R.string.mirroring_window_is_not_in_the_foreground)
                 !rayMode -> AppText.get(R.string.ray_mode_is_off)
                 attachedHid?.isArmed != true -> AppText.get(R.string.mouse_control_is_not_enabled)
@@ -74,6 +82,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             }
         }) { updateHidUi() }
         val pointerPrefs=getSharedPreferences("pointer_ui",MODE_PRIVATE)
+        alignmentRequested=pointerPrefs.getBoolean("alignment_enabled",true)
         rayAlignment.setFast(pointerPrefs.getBoolean("fast_alignment",true))
         rayAlignment.calibration.intervalMinutes(if(pointerPrefs.getInt("calibration_minutes",5)==3)3 else 5)
         rayMode = getSharedPreferences("pointer_ui", MODE_PRIVATE).getBoolean("relative_ray_enabled", true)
@@ -145,33 +154,20 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         previousButton = action(primary, AppText.get(R.string.scroll_up)) { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(1) }
         nextButton = action(primary, AppText.get(R.string.scroll_down)) { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(-1) }
         action(primary, AppText.get(R.string.restore_control)) { restoreDirectControl() }
-        lateinit var speedButton: Button
-        speedButton=action(primary,if(rayAlignment.isFast())AppText.get(R.string.assist_responsive) else AppText.get(R.string.assist_steady)) {
-            rayAlignment.toggleSpeed()
-            getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("fast_alignment",rayAlignment.isFast()).apply()
-            speedButton.text=if(rayAlignment.isFast())AppText.get(R.string.assist_responsive) else AppText.get(R.string.assist_steady)
-        }
         leftButton = action(pointer, AppText.get(R.string.drag_left)) { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(-1) }
         clickButton = action(pointer, AppText.get(R.string.click_pointer)) { rayAlignment.calibration.invalidateSegment(); svc?.hid?.clickPointer() }
         rightButton = action(pointer, AppText.get(R.string.drag_right)) { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(1) }
-        rayButton = action(pointer, AppText.get(R.string.relative_ray_off)) {
-            rayMode = !rayMode
-            getSharedPreferences("pointer_ui", MODE_PRIVATE).edit()
-                .putBoolean("relative_ray_enabled", rayMode).apply()
-            rayView.resetInput()
-            updateHidUi()
-            refreshVideoState()
-        }
-        alignButton = action(pointer, AppText.get(R.string.alignment_off)) {
-            rayAlignment.setEnabled(!rayAlignment.enabled)
-        }
-        action(pointer, AppText.get(R.string.language_settings)) { showLanguageSettings() }
+        action(pointer, AppText.get(R.string.app_settings)) { openSettingsPage() }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
-        rayButton.setOnLongClickListener {
-            startPointerObservation()
-            true
-        }
-        setContentView(root)
+        mainPage=root
+        val pages=FrameLayout(this)
+        pages.addView(root,FrameLayout.LayoutParams(-1,-1))
+        settingsPage=createSettingsPage().apply {visibility=View.GONE}
+        pages.addView(settingsPage,FrameLayout.LayoutParams(-1,-1))
+        setContentView(pages)
+        onBackPressedDispatcher.addCallback(this,settingsBack)
+        if(savedInstanceState?.getBoolean("settings_open")==true)openSettingsPage()
+        syncAlignmentPreference()
 
         val svcIntent = Intent(this, AirPlayService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -205,13 +201,15 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         if (hid == null) { hidStatus.postDelayed({ attachControlsWhenReady() }, 100); return }
         attachedHid = hid
         hid.attachUi(inputOwner) { updateHidUi() }
-        hid.setFocused(inputOwner, hasWindowFocus())
+        hid.setFocused(inputOwner, hasWindowFocus()&&!settingsOpen)
         updateHidUi()
         refreshVideoState()
     }
 
     private fun updateHidUi() {
         if (!::hidStatus.isInitialized) return
+        if(::alignButton.isInitialized)alignButton.text=AppText.get(if(alignmentRequested)R.string.alignment_on else R.string.alignment_off)
+        if(::rayButton.isInitialized)rayButton.text=AppText.get(if(rayMode)R.string.relative_ray_on else R.string.relative_ray_off)
         val hid = attachedHid ?: return
         var primary=hid.statusText()
         var detail=""
@@ -226,7 +224,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
         if(hidStatus.text.toString()!=primary)hidStatus.text=primary
         hidStatus.contentDescription=primary+". "+detail
-        alignButton.text = if (rayAlignment.enabled) AppText.get(R.string.alignment_on) else AppText.get(R.string.alignment_off)
+        alignButton.text = if (alignmentRequested) AppText.get(R.string.alignment_on) else AppText.get(R.string.alignment_off)
         rayButton.text = if (rayMode) AppText.get(R.string.relative_ray_on) else AppText.get(R.string.relative_ray_off)
         controlButton.text = if (hid.isArmed) AppText.get(R.string.pause_control) else AppText.get(R.string.enable_control)
         val actionsAllowed=hid.isArmed&&!rayAlignment.calibration.isActive
@@ -253,10 +251,100 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             .setPositiveButton(AppText.get(R.string.restore_direct_control)){_,_ ->
                 pendingControlRestore=true
             }
-            .setNeutralButton(AppText.get(R.string.language_settings)){_,_ -> showLanguageSettings()}
+            .setNeutralButton(AppText.get(R.string.app_settings)){_,_ -> openSettingsPage()}
             .setNegativeButton(AppText.get(R.string.close),null).create()
         dialog.setOnDismissListener {window.decorView.post { restoreWhenFocused() }}
         dialog.show()
+    }
+    private fun createSettingsPage():View {
+        val page=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(24,24,24))
+            setPadding(24,20,24,20);isClickable=true;isFocusableInTouchMode=true
+        }
+        page.addView(Button(this).apply {
+            text=AppText.get(R.string.back_to_mirroring);isAllCaps=false
+            setOnClickListener {closeSettingsPage()}
+        },LinearLayout.LayoutParams(-2,-2))
+        page.addView(TextView(this).apply {
+            text=AppText.get(R.string.app_settings);textSize=26f;setTextColor(Color.WHITE);setPadding(0,16,0,16)
+        })
+        val content=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL}
+        content.addView(TextView(this).apply {
+            text=AppText.get(R.string.app_language_description);textSize=18f;setTextColor(Color.LTGRAY);setPadding(0,8,0,16)
+        })
+        val selected=when(AppText.selection(this)){
+            "en" -> AppText.get(R.string.language_english)
+            "de" -> AppText.get(R.string.language_german)
+            "fr" -> AppText.get(R.string.language_french)
+            "zh-CN" -> AppText.get(R.string.language_chinese)
+            else -> AppText.get(R.string.follow_system)
+        }
+        content.addView(TextView(this).apply {
+            text=AppText.get(R.string.selected_language,selected);textSize=18f;setTextColor(Color.WHITE)
+        })
+        content.addView(Button(this).apply {
+            text=AppText.get(R.string.language_settings);isAllCaps=false
+            setOnClickListener {showLanguageSettings()}
+        },LinearLayout.LayoutParams(-1,-2))
+        fun note(id:Int){content.addView(TextView(this).apply {
+            text=AppText.get(id);textSize=16f;setTextColor(Color.LTGRAY);setPadding(0,12,0,12)
+        })}
+        fun setting(label:String,run:()->Unit)=Button(this).apply {
+            text=label;isAllCaps=false;maxLines=2
+            setOnClickListener {run()}
+            content.addView(this,LinearLayout.LayoutParams(-1,-2))
+        }
+        rayButton=setting(AppText.get(if(rayMode)R.string.relative_ray_on else R.string.relative_ray_off)){
+            rayMode=!rayMode
+            getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("relative_ray_enabled",rayMode).apply()
+            rayView.resetInput()
+            rayButton.text=AppText.get(if(rayMode)R.string.relative_ray_on else R.string.relative_ray_off)
+            updateHidUi()
+        }
+        rayButton.setOnLongClickListener {closeSettingsPage();startPointerObservation();true}
+        note(R.string.ray_setting_description)
+        alignButton=setting(AppText.get(if(alignmentRequested)R.string.alignment_on else R.string.alignment_off)){
+            alignmentRequested=!alignmentRequested
+            getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("alignment_enabled",alignmentRequested).apply()
+            alignButton.text=AppText.get(if(alignmentRequested)R.string.alignment_on else R.string.alignment_off)
+            syncAlignmentPreference()
+        }
+        note(R.string.alignment_setting_description)
+        lateinit var speed:Button
+        speed=setting(AppText.get(if(rayAlignment.isFast())R.string.assist_responsive else R.string.assist_steady)){
+            rayAlignment.toggleSpeed()
+            getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("fast_alignment",rayAlignment.isFast()).apply()
+            speed.text=AppText.get(if(rayAlignment.isFast())R.string.assist_responsive else R.string.assist_steady)
+        }
+        note(R.string.speed_setting_description)
+        note(R.string.main_buttons_description)
+        note(R.string.pointer_buttons_description)
+        note(R.string.restore_control_does_not_center_the_ipad)
+        page.addView(android.widget.ScrollView(this).apply {addView(content)},LinearLayout.LayoutParams(-1,0,1f))
+        return page
+    }
+    private fun openSettingsPage(){
+        settingsOpen=true;settingsBack.isEnabled=true;pendingControlRestore=false
+        attachedHid?.setFocused(inputOwner,false)
+        rayAlignment.setEnabled(false);rayView.resetInput();pointerObservation.cancel()
+        mainPage.importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        settingsPage.visibility=View.VISIBLE;settingsPage.requestFocus()
+        refreshVideoState()
+    }
+    private fun closeSettingsPage(){
+        settingsOpen=false;settingsBack.isEnabled=false;settingsPage.visibility=View.GONE
+        mainPage.importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+        attachedHid?.setFocused(inputOwner,hasWindowFocus())
+        syncAlignmentPreference()
+        updateHidUi();refreshVideoState()
+    }
+    override fun onSaveInstanceState(outState:Bundle){
+        outState.putBoolean("settings_open",settingsOpen)
+        super.onSaveInstanceState(outState)
+    }
+    private fun syncAlignmentPreference(){
+        val enabled=alignmentRequested&&!settingsOpen&&!isInPictureInPictureMode
+        if(rayAlignment.enabled!=enabled)rayAlignment.setEnabled(enabled)
     }
     private fun showLanguageSettings(){
         val tags=arrayOf("","en","de","fr","zh-CN")
@@ -283,6 +371,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         restoreDirectControl()
     }
     private fun restoreDirectControl(){
+        alignmentRequested=false
+        getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("alignment_enabled",false).apply()
         rayAlignment.cancelCalibration()
         rayAlignment.setEnabled(false)
         rayAlignment.calibration.resetForDirectControl()
@@ -300,7 +390,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val decision="waiting=${waiting.visibility==View.VISIBLE} pip=$isInPictureInPictureMode ready=$surfaceReady owner=${System.identityHashCode(surfaceOwner)}"
         if(decision!=lastWaitingDecision){lastWaitingDecision=decision;android.util.Log.i("AirPlayDisplay",decision+" "+svc?.video?.displayDiagnostic(surfaceOwner))}
         if (::rayView.isInitialized) {
-            val usable = rayMode && waiting.visibility == View.GONE && attachedHid?.isArmed == true && !isInPictureInPictureMode
+            val usable = !settingsOpen && rayMode && waiting.visibility == View.GONE && attachedHid?.isArmed == true && !isInPictureInPictureMode
             rayView.visibility = if (usable) View.VISIBLE else View.GONE
             rayView.isEnabled = usable
             if (!usable) rayView.resetInput()
@@ -323,6 +413,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if(settingsOpen)return super.dispatchGenericMotionEvent(event)
         if(::rayAlignment.isInitialized && rayAlignment.calibration.isActive && event.isFromSource(android.view.InputDevice.SOURCE_JOYSTICK))return true
         if(::rayAlignment.isInitialized && rayAlignment.calibration.isActive && event.actionMasked==MotionEvent.ACTION_SCROLL)return true
         if(::rayAlignment.isInitialized && event.actionMasked==MotionEvent.ACTION_SCROLL)rayAlignment.calibration.externalAction()
@@ -332,7 +423,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        attachedHid?.setFocused(inputOwner, hasFocus)
+        attachedHid?.setFocused(inputOwner, hasFocus&&!settingsOpen)
         if (!hasFocus && ::rayView.isInitialized) rayView.resetInput()
         if (!hasFocus && ::pointerObservation.isInitialized) pointerObservation.cancel()
         if(hasFocus&&::rayAlignment.isInitialized)restoreWhenFocused()
@@ -353,6 +444,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onResume() {
         super.onResume()
+        syncAlignmentPreference()
         android.util.Log.i("AirPlayLifecycle", "resume rebuild=$rebuildSurfaceOnResume surfaceReady=$surfaceReady")
         if (rebuildSurfaceOnResume && ::surfaceView.isInitialized) {
             rebuildSurfaceOnResume = false
@@ -361,7 +453,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             // Pause/resume without stop also needs to leave the parking surface.
             surfaceOwner?.let { svc?.attachSurface(it,surfaceView.holder.surface) }
         }
-        attachedHid?.setFocused(inputOwner, hasWindowFocus())
+        attachedHid?.setFocused(inputOwner, hasWindowFocus()&&!settingsOpen)
         refreshVideoState()
     }
 

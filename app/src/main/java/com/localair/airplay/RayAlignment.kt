@@ -8,7 +8,7 @@ import android.os.SystemClock
 import android.view.PixelCopy
 import android.view.SurfaceView
 
-/** Opt-in experiment. Samples video only; never clicks and never starts enabled. */
+/** Experimental visual correction. Activity owns the user's preference; this never clicks. */
 class RayAlignment(
     private val view: () -> SurfaceView,
     private val hid: () -> HidController?,

@@ -136,4 +136,13 @@
     <string name="language_french">"Français"</string>
     <string name="language_chinese">"简体中文"</string>
     <string name="apply_language">"Apply"</string>
+    <string name="app_settings">"Settings"</string>
+    <string name="back_to_mirroring">"Back to mirroring"</string>
+    <string name="app_language_description">"Choose the language for this app. Your headset system language stays unchanged."</string>
+    <string name="selected_language">"Selected language: %1$s"</string>
+    <string name="ray_setting_description">"Relative ray moves the iPad pointer with your ray. Turning it off does not stop mirroring."</string>
+    <string name="alignment_setting_description">"Alignment assist is on by default. It uses experimental visual correction after mouse control is enabled. It pauses on this settings page; your choice is saved."</string>
+    <string name="speed_setting_description">"Assist speed changes visual correction only. It does not change direct mouse sensitivity."</string>
+    <string name="main_buttons_description">"Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control."</string>
+    <string name="pointer_buttons_description">"Drag left/right holds the mouse button at the current iPad pointer, drags, then releases. Click pointer clicks that position. These actions need enabled control. Language applies only to this app; Back returns to mirroring."</string>
 </resources>

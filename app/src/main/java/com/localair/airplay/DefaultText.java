@@ -139,6 +139,15 @@ final class DefaultText {
         if(id==R.string.language_french)return "Français";
         if(id==R.string.language_chinese)return "简体中文";
         if(id==R.string.apply_language)return "Apply";
+        if(id==R.string.app_settings)return "Settings";
+        if(id==R.string.back_to_mirroring)return "Back to mirroring";
+        if(id==R.string.app_language_description)return "Choose the language for this app. Your headset system language stays unchanged.";
+        if(id==R.string.selected_language)return "Selected language: %1$s";
+        if(id==R.string.ray_setting_description)return "Relative ray moves the iPad pointer with your ray. Turning it off does not stop mirroring.";
+        if(id==R.string.alignment_setting_description)return "Alignment assist is on by default. It uses experimental visual correction after mouse control is enabled. It pauses on this settings page; your choice is saved.";
+        if(id==R.string.speed_setting_description)return "Assist speed changes visual correction only. It does not change direct mouse sensitivity.";
+        if(id==R.string.main_buttons_description)return "Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control.";
+        if(id==R.string.pointer_buttons_description)return "Drag left/right holds the mouse button at the current iPad pointer, drags, then releases. Click pointer clicks that position. These actions need enabled control. Language applies only to this app; Back returns to mirroring.";
         throw new IllegalArgumentException("Unknown text resource: "+id);
     }
 }

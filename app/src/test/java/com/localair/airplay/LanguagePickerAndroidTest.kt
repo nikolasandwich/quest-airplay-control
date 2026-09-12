@@ -53,6 +53,8 @@ class LanguagePickerAndroidTest {
             val activity=controller.get()
             fun buttons(v:android.view.View):List<android.widget.Button> =
                 if(v is android.widget.Button)listOf(v) else if(v is android.view.ViewGroup)(0 until v.childCount).flatMap {buttons(v.getChildAt(it))} else emptyList()
+            val settings=buttons(activity.window.decorView).single {it.text.toString()==AppText.get(R.string.app_settings)}
+            settings.performClick()
             val language=buttons(activity.window.decorView).single {it.text.toString()==AppText.get(R.string.language_settings)}
             assertTrue(language.isEnabled)
             assertEquals(android.view.View.VISIBLE,language.visibility)

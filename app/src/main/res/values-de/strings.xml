@@ -136,4 +136,13 @@
     <string name="language_french">"Français"</string>
     <string name="language_chinese">"简体中文"</string>
     <string name="apply_language">"Übernehmen"</string>
+    <string name="app_settings">"Einstellungen"</string>
+    <string name="back_to_mirroring">"Zurück zur Übertragung"</string>
+    <string name="app_language_description">"Sprache für diese App wählen. Die Systemsprache des Headsets bleibt unverändert."</string>
+    <string name="selected_language">"Gewählte Sprache: %1$s"</string>
+    <string name="ray_setting_description">"Der relative Strahl bewegt den iPad-Zeiger. Ausschalten beendet die Übertragung nicht."</string>
+    <string name="alignment_setting_description">"Die Ausrichtungshilfe ist standardmäßig an. Sie korrigiert visuell, sobald die Maussteuerung aktiv ist. Auf dieser Einstellungsseite pausiert sie; Ihre Auswahl wird gespeichert."</string>
+    <string name="speed_setting_description">"Die Hilfsgeschwindigkeit ändert nur die visuelle Korrektur, nicht die direkte Mausempfindlichkeit."</string>
+    <string name="main_buttons_description">"Maus verbinden startet die Bluetooth-Einrichtung. Aktivieren/Pausieren erlaubt oder stoppt Mauseingaben. Nach oben/unten sendet Scrollbewegungen; die iPad-App bestimmt das Ergebnis. Zurücksetzen deaktiviert die Hilfe und stellt die direkte Steuerung wieder her."</string>
+    <string name="pointer_buttons_description">"Links/rechts ziehen drückt an der aktuellen iPad-Zeigerposition, zieht und lässt los. Mausklick klickt dort. Die Steuerung muss aktiv sein. Sprache gilt nur für diese App; Zurück führt zur Übertragung."</string>
 </resources>
