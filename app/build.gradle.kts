@@ -13,8 +13,8 @@ android {
         applicationId = "com.questlab.airplayreceiver"
         minSdk = 28
         targetSdk = 34
-        versionCode = 27
-        versionName = "0.2.20-settings-polish-preview"
+        versionCode = 28
+        versionName = "0.2.21-onboarding-preview"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

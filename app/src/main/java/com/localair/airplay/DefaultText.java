@@ -149,6 +149,16 @@ final class DefaultText {
         if(id==R.string.main_buttons_description)return "Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control.";
         if(id==R.string.pointer_buttons_description)return "Drag left/right holds the mouse button at the current iPad pointer, drags, then releases. Click pointer clicks that position. These actions need enabled control. Language applies only to this app; Back returns to mirroring.";
         if(id==R.string.button_guide)return "Button guide";
+        if(id==R.string.quick_start)return "Quick start";
+        if(id==R.string.guide_next)return "Next";
+        if(id==R.string.guide_previous)return "Back";
+        if(id==R.string.guide_skip)return "Skip";
+        if(id==R.string.guide_done)return "Done";
+        if(id==R.string.start_card_1)return "1. Open the app\nKeep Quest and iPad on the same Wi-Fi. Leave this app open while mirroring.";
+        if(id==R.string.start_card_2)return "2. Start mirroring\nOn iPad, open Control Center, choose Screen Mirroring, then select Quest AirPlay Lab. Wait for the iPad picture to appear.";
+        if(id==R.string.start_card_3)return "3. Connect the mouse\nReturn to mirroring and select Connect mouse. Allow Bluetooth access if asked. In iPad Bluetooth settings, pair or reconnect the Quest mouse device.";
+        if(id==R.string.start_card_4)return "4. Enable control\nSelect Enable control. Move the ray to move the iPad pointer; confirm clicks the pointer position. No calibration is needed.";
+        if(id==R.string.start_card_5)return "5. Everyday use\nPause control when needed. Settings contains language, ray and alignment options. After leaving Settings, enable control again. Restore control turns assist off; it does not center the pointer.";
         throw new IllegalArgumentException("Unknown text resource: "+id);
     }
 }

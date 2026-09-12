@@ -146,4 +146,14 @@
     <string name="main_buttons_description">"Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control."</string>
     <string name="pointer_buttons_description">"Drag left/right holds the mouse button at the current iPad pointer, drags, then releases. Click pointer clicks that position. These actions need enabled control. Language applies only to this app; Back returns to mirroring."</string>
     <string name="button_guide">Button guide</string>
+    <string name="quick_start">"Quick start"</string>
+    <string name="guide_next">"Next"</string>
+    <string name="guide_previous">"Back"</string>
+    <string name="guide_skip">"Skip"</string>
+    <string name="guide_done">"Done"</string>
+    <string name="start_card_1">"1. Open the app\nKeep Quest and iPad on the same Wi-Fi. Leave this app open while mirroring."</string>
+    <string name="start_card_2">"2. Start mirroring\nOn iPad, open Control Center, choose Screen Mirroring, then select Quest AirPlay Lab. Wait for the iPad picture to appear."</string>
+    <string name="start_card_3">"3. Connect the mouse\nReturn to mirroring and select Connect mouse. Allow Bluetooth access if asked. In iPad Bluetooth settings, pair or reconnect the Quest mouse device."</string>
+    <string name="start_card_4">"4. Enable control\nSelect Enable control. Move the ray to move the iPad pointer; confirm clicks the pointer position. No calibration is needed."</string>
+    <string name="start_card_5">"5. Everyday use\nPause control when needed. Settings contains language, ray and alignment options. After leaving Settings, enable control again. Restore control turns assist off; it does not center the pointer."</string>
 </resources>

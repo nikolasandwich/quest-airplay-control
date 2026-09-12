@@ -146,4 +146,14 @@
     <string name="main_buttons_description">"Maus verbinden startet die Bluetooth-Einrichtung. Aktivieren/Pausieren erlaubt oder stoppt Mauseingaben. Nach oben/unten sendet Scrollbewegungen; die iPad-App bestimmt das Ergebnis. Zurücksetzen deaktiviert die Hilfe und stellt die direkte Steuerung wieder her."</string>
     <string name="pointer_buttons_description">"Links/rechts ziehen drückt an der aktuellen iPad-Zeigerposition, zieht und lässt los. Mausklick klickt dort. Die Steuerung muss aktiv sein. Sprache gilt nur für diese App; Zurück führt zur Übertragung."</string>
     <string name="button_guide">Bedienungshilfe</string>
+    <string name="quick_start">"Erste Schritte"</string>
+    <string name="guide_next">"Weiter"</string>
+    <string name="guide_previous">"Zurück"</string>
+    <string name="guide_skip">"Überspringen"</string>
+    <string name="guide_done">"Fertig"</string>
+    <string name="start_card_1">"1. App öffnen\nVerbinde Quest und iPad mit demselben WLAN. Lass diese App während der Übertragung geöffnet."</string>
+    <string name="start_card_2">"2. Bildschirm übertragen\nÖffne auf dem iPad das Kontrollzentrum, wähle Bildschirmsynchronisierung und dann Quest AirPlay Lab. Warte, bis das iPad-Bild erscheint."</string>
+    <string name="start_card_3">"3. Maus verbinden\nKehre zur Übertragung zurück und wähle Maus verbinden. Erlaube bei Nachfrage den Bluetooth-Zugriff. Kopple oder verbinde das Quest-Mausgerät in den Bluetooth-Einstellungen des iPads."</string>
+    <string name="start_card_4">"4. Steuerung aktivieren\nAktiviere die Steuerung. Bewege den Strahl, um den iPad-Zeiger zu bewegen. Bestätigen klickt an der Zeigerposition. Keine Kalibrierung nötig."</string>
+    <string name="start_card_5">"5. Im Alltag\nPausiere bei Bedarf die Steuerung. Sprache, Strahl und Ausrichtungshilfe stehen in den Einstellungen. Aktiviere danach die Steuerung erneut. Steuerung wiederherstellen schaltet die Hilfe aus, zentriert aber nicht den Zeiger."</string>
 </resources>

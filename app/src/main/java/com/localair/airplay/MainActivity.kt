@@ -168,6 +168,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         onBackPressedDispatcher.addCallback(this,settingsBack)
         if(savedInstanceState?.getBoolean("settings_open")==true)openSettingsPage()
         syncAlignmentPreference()
+        if(savedInstanceState==null&&!getSharedPreferences("onboarding",MODE_PRIVATE).getBoolean("seen",false)){
+            pages.post {if(!isFinishing&&!isDestroyed){openSettingsPage();showOnboarding()}}
+        }
 
         val svcIntent = Intent(this, AirPlayService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -318,6 +321,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             speed.text=AppText.get(if(rayAlignment.isFast())R.string.assist_responsive else R.string.assist_steady)
         }
         setting(AppText.get(R.string.button_guide)){showButtonGuide()}
+        setting(AppText.get(R.string.quick_start)){showOnboarding()}
         page.addView(android.widget.ScrollView(this).apply {addView(content)},LinearLayout.LayoutParams(-1,0,1f))
         return page
     }
@@ -353,6 +357,44 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         android.app.AlertDialog.Builder(this).setTitle(AppText.get(R.string.button_guide))
             .setView(android.widget.ScrollView(this).apply {addView(content)})
             .setPositiveButton(AppText.get(R.string.close),null).show()
+    }
+    private fun showOnboarding(){
+        val cards=intArrayOf(R.string.start_card_1,R.string.start_card_2,R.string.start_card_3,
+            R.string.start_card_4,R.string.start_card_5)
+        var step=0
+        val card=TextView(this).apply {
+            textSize=21f;setTextColor(Color.WHITE)
+            val pad=(28*resources.displayMetrics.density).toInt()
+            setPadding(pad,pad,pad,pad);setLineSpacing(8f,1.1f)
+            setBackgroundColor(Color.rgb(35,43,56))
+        }
+        val dialog=android.app.AlertDialog.Builder(this)
+            .setTitle(AppText.get(R.string.quick_start))
+            .setView(android.widget.ScrollView(this).apply {addView(card)})
+            .setPositiveButton(AppText.get(R.string.guide_next),null)
+            .setNegativeButton(AppText.get(R.string.guide_skip),null)
+            .setNeutralButton(AppText.get(R.string.guide_previous),null).create()
+        fun render(){
+            dialog.setTitle("${AppText.get(R.string.quick_start)} · ${step+1}/5")
+            card.text=AppText.get(cards[step]);card.scrollTo(0,0)
+            (card.parent as View).scrollTo(0,0)
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).isEnabled=step>0
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text=AppText.get(
+                if(step==cards.lastIndex)R.string.guide_done else R.string.guide_next)
+        }
+        dialog.setOnDismissListener {
+            getSharedPreferences("onboarding",MODE_PRIVATE).edit().putBoolean("seen",true).apply()
+        }
+        dialog.setOnShowListener {
+            render()
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if(step==cards.lastIndex)dialog.dismiss() else {step++;render()}
+            }
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                if(step>0){step--;render()}
+            }
+        }
+        dialog.show()
     }
     private fun openSettingsPage(){
         settingsOpen=true;settingsBack.isEnabled=true;pendingControlRestore=false

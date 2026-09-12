@@ -146,4 +146,14 @@
     <string name="main_buttons_description">"Connecter souris prépare le Bluetooth. Activer/Suspendre autorise ou arrête les entrées. Le défilement vertical dépend de l’application iPad. Rétablir commande désactive l’aide et restaure la commande relative de base."</string>
     <string name="pointer_buttons_description">"Glisser à gauche/droite maintient le bouton à la position du pointeur iPad, déplace puis relâche. Cliquer agit à cette position. La commande doit être activée. La langue ne concerne que cette application ; Retour revient à la recopie."</string>
     <string name="button_guide">Guide des commandes</string>
+    <string name="quick_start">"Premiers pas"</string>
+    <string name="guide_next">"Suivant"</string>
+    <string name="guide_previous">"Retour"</string>
+    <string name="guide_skip">"Passer"</string>
+    <string name="guide_done">"Terminer"</string>
+    <string name="start_card_1">"1. Ouvrir l’application\nConnectez Quest et iPad au même réseau Wi-Fi. Gardez cette application ouverte pendant la recopie."</string>
+    <string name="start_card_2">"2. Recopier l’écran\nSur iPad, ouvrez le centre de contrôle, choisissez Recopie de l’écran, puis Quest AirPlay Lab. Attendez que l’image apparaisse."</string>
+    <string name="start_card_3">"3. Connecter la souris\nRevenez à la recopie et choisissez Connecter la souris. Autorisez le Bluetooth si nécessaire. Associez ou reconnectez la souris Quest dans les réglages Bluetooth de l’iPad."</string>
+    <string name="start_card_4">"4. Activer le contrôle\nActivez le contrôle. Déplacez le rayon pour déplacer le pointeur de l’iPad ; la confirmation clique à sa position. Aucun calibrage nécessaire."</string>
+    <string name="start_card_5">"5. Utilisation quotidienne\nMettez le contrôle en pause au besoin. Les réglages contiennent la langue, le rayon et l’assistance. Réactivez le contrôle après les réglages. Restaurer le contrôle désactive l’assistance sans recentrer le pointeur."</string>
 </resources>
