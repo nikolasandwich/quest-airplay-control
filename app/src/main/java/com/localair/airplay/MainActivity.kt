@@ -357,6 +357,38 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("fast_alignment",rayAlignment.isFast()).apply()
             speed.text=AppText.get(if(rayAlignment.isFast())R.string.assist_responsive else R.string.assist_steady)
         }
+        fun gainSlider(title:Int,key:String){
+            val prefs=getSharedPreferences("pointer_ui",MODE_PRIVATE)
+            val label=TextView(this).apply {
+                textSize=17f;setTextColor(Color.WHITE);setPadding(dp(4),dp(18),0,dp(4))
+            }
+            content.addView(label)
+            val slider=android.widget.SeekBar(this).apply {
+                max=35;progress=(prefs.getInt(key,100).coerceIn(25,200)-25)/5
+                contentDescription=AppText.get(title)
+                minimumHeight=dp(48)
+            }
+            fun value(){label.text="${AppText.get(title)} · ${25+slider.progress*5}%"}
+            value()
+            slider.setOnSeekBarChangeListener(object:android.widget.SeekBar.OnSeekBarChangeListener{
+                override fun onProgressChanged(bar:android.widget.SeekBar,progress:Int,fromUser:Boolean){
+                    value()
+                    if(fromUser){
+                        prefs.edit().putInt(key,25+progress*5).apply()
+                        svc?.hid?.refreshMotionPreferences()
+                    }
+                }
+                override fun onStartTrackingTouch(bar:android.widget.SeekBar){}
+                override fun onStopTrackingTouch(bar:android.widget.SeekBar){}
+            })
+            content.addView(slider,LinearLayout.LayoutParams(-1,-2))
+        }
+        gainSlider(R.string.drag_distance,"drag_percent")
+        gainSlider(R.string.scroll_speed,"scroll_percent")
+        content.addView(TextView(this).apply {
+            text=AppText.get(R.string.motion_gain_help);textSize=14f
+            setTextColor(Color.LTGRAY);setPadding(dp(4),dp(4),dp(4),dp(12))
+        })
         setting(AppText.get(R.string.button_guide)){showButtonGuide()}
         setting(AppText.get(R.string.quick_start)){showOnboarding()}
         page.addView(android.widget.ScrollView(this).apply {addView(content)},LinearLayout.LayoutParams(-1,0,1f))
@@ -376,7 +408,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             listOf(R.string.assist_responsive,R.string.assist_steady) to R.string.speed_setting_description,
             listOf(R.string.language_settings) to R.string.app_language_description,
             listOf(R.string.restore_control) to R.string.restore_control_does_not_center_the_ipad,
-            listOf(R.string.hide_controls,R.string.show_controls) to R.string.lock_description)
+            listOf(R.string.hide_controls,R.string.show_controls) to R.string.lock_description,
+            listOf(R.string.drag_distance,R.string.scroll_speed) to R.string.motion_gain_help)
         rows.forEachIndexed {index,(labels,description) ->
             content.addView(LinearLayout(this).apply {
                 orientation=LinearLayout.HORIZONTAL

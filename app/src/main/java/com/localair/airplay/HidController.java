@@ -22,12 +22,20 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     private Runnable listener;
     private String lastStatus=AppText.get(R.string.mouse_disconnected);
     private final AsyncDiagnosticLog diagnostics;
+    private double dragGain=1, scrollGain=1;
+    public void refreshMotionPreferences(){
+        android.content.SharedPreferences prefs=getSharedPreferences("pointer_ui",MODE_PRIVATE);
+        dragGain=Math.max(25,Math.min(200,prefs.getInt("drag_percent",100)))/100.0;
+        double gain=Math.max(25,Math.min(200,prefs.getInt("scroll_percent",100)))/100.0;
+        if(gain!=scrollGain){scrollGain=gain;mappedScroll.configure(false,gain,6);}
+    }
     public HidController(Context context) {
         super(context);
         diagnostics=new AsyncDiagnosticLog(new java.io.File(getFilesDir(),"hid-diagnostic.log"),message -> Log.w("QuestHidLab",message));
         BluetoothManager manager=getSystemService(BluetoothManager.class);
         adapter=manager==null?null:manager.getAdapter();
         mappedScroll.configure(false,1,6);
+        refreshMotionPreferences();
     }
     public void attachUi(Object owner, Runnable changed) {
         if(uiOwner!=owner){disarm();uiOwner=owner;}
@@ -153,7 +161,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     public void dragPointer(int direction){if(direction==1||direction==-1)startPointerAction(direction);}
     private void startPointerAction(int direction){
         if(!armed||!focused||needsReconnect||releaseUnconfirmed||!serviceReady||server==null||host==null||!subscribed||suspended||protocolMode!=1||notificationPending||gestureRemaining!=0||host.getBondState()!=BluetoothDevice.BOND_BONDED)return;
-        if(!pointerAction.start(direction))return;
+        if(!pointerAction.start(direction,dragGain))return;
         mappedScroll.stop();pointerHost=host;pointerEpoch=generation;releaseAttempts=0;
         note(direction==0?"User action: left click at current iPad pointer":"User action: mouse drag direction="+direction+"; not a touch digitizer");
         handler.postDelayed(pointerTimeout,650);
@@ -204,12 +212,13 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     private int gestureRemaining;
     private int gestureSteps;
     private int gestureDirection;
+    private int gestureWheel=10;
     private final Runnable gestureStep=new Runnable(){
         @Override public void run(){
             if(gestureRemaining<=0)return;
             if(!focused||!serviceReady||!armed||!subscribed||suspended||protocolMode!=1||host==null||!host.equals(gestureHost)||host.getBondState()!=BluetoothDevice.BOND_BONDED){cancelGesture();return;}
             gestureRemaining--;
-            send(0,0,0,gestureDirection*10);
+            send(0,0,0,gestureDirection*gestureWheel);
             if(gestureHost==null)return;
             if(gestureRemaining>0)handler.postDelayed(this,60);
             else {gestureHost=null;note("Short scroll gesture complete: "+gestureSteps+" reports requested; app effect requires observation");}
@@ -223,9 +232,10 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         int steps=6;
         if(!focused || (direction!=1 && direction!=-1))return;
         gestureDirection=direction;
+        gestureWheel=(int)Math.round(10*scrollGain);
         if(!focused||!serviceReady||!armed||!subscribed||suspended||protocolMode!=1||host==null||host.getBondState()!=BluetoothDevice.BOND_BONDED){note("Gesture unavailable: enable controls on connected REPORT host");return;}
         gestureHost=host;gestureRemaining=steps;gestureSteps=steps;
-        note("Short scroll gesture started: "+steps+" x wheel "+(gestureDirection*10)+" at 60ms; no automatic repeat");
+        note("Short scroll gesture started: "+steps+" x wheel "+(gestureDirection*gestureWheel)+" at 60ms; no automatic repeat");
         handler.post(gestureStep);
     }
 

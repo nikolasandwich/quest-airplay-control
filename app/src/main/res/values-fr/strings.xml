@@ -159,4 +159,7 @@
     <string name="show_controls">Afficher les commandes</string>
     <string name="hide_controls">Masquer les commandes</string>
     <string name="lock_description">"Touchez le cadenas à droite pour masquer les commandes du haut et du bas. Touchez-le à nouveau pour les afficher. Le contrôle de la souris reste actif.\nQuand les commandes sont masquées, le cadenas disparaît après trois secondes. Pointez vers sa position à droite pour le révéler ; éloignez le rayon pour le masquer à nouveau."</string>
+    <string name="drag_distance">"Distance de glissement horizontal"</string>
+    <string name="scroll_speed">"Vitesse de défilement"</string>
+    <string name="motion_gain_help" formatted="false">"25–200 % ; 100 % conserve le réglage initial. La distance concerne les actions gauche/droite. La vitesse concerne les boutons haut/bas et le défilement système. Une entrée verticale plus forte ou prolongée défile davantage ; une poussée horizontale déclenche un seul glissement. La vitesse du pointeur reste inchangée."</string>
 </resources>

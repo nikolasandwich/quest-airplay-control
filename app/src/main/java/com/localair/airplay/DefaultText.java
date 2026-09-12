@@ -162,6 +162,9 @@ final class DefaultText {
         if(id==R.string.show_controls)return "Show controls";
         if(id==R.string.hide_controls)return "Hide controls";
         if(id==R.string.lock_description)return "Tap the lock on the right to hide the top and bottom controls. Tap it again to show them. This only hides the interface; mouse control continues.\nWith controls hidden, the lock disappears after three seconds. Point at its position on the right to reveal it; move away to hide it again.";
+        if(id==R.string.drag_distance)return "Horizontal drag distance";
+        if(id==R.string.scroll_speed)return "Scroll speed";
+        if(id==R.string.motion_gain_help)return "25–200%; 100% keeps the original feel. Drag distance affects left/right actions. Scroll speed affects up/down buttons and system scroll events. Stronger or sustained vertical input scrolls more; horizontal input triggers one drag per push. Pointer movement speed is unchanged.";
         throw new IllegalArgumentException("Unknown text resource: "+id);
     }
 }

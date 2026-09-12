@@ -159,4 +159,7 @@
     <string name="show_controls">Bedienelemente anzeigen</string>
     <string name="hide_controls">Bedienelemente ausblenden</string>
     <string name="lock_description">"Tippe rechts auf das Schloss, um die oberen und unteren Bedienelemente auszublenden. Erneutes Tippen zeigt sie wieder. Die Maussteuerung bleibt aktiv.\nBei ausgeblendeten Bedienelementen verschwindet das Schloss nach drei Sekunden. Ziele rechts auf seine Position, um es anzuzeigen. Bewege den Strahl weg, um es wieder auszublenden."</string>
+    <string name="drag_distance">"Horizontale Ziehstrecke"</string>
+    <string name="scroll_speed">"Scrollgeschwindigkeit"</string>
+    <string name="motion_gain_help" formatted="false">"25–200 %; 100 % entspricht dem bisherigen Verhalten. Die Ziehstrecke gilt für Links/Rechts, die Scrollgeschwindigkeit für Auf/Ab und System-Scrollereignisse. Stärkere oder längere vertikale Eingaben scrollen mehr. Horizontal wird einmal pro Bewegung gezogen. Die Zeigergeschwindigkeit bleibt gleich."</string>
 </resources>

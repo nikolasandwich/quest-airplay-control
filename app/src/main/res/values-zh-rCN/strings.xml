@@ -159,4 +159,7 @@
     <string name="show_controls">显示控制栏</string>
     <string name="hide_controls">隐藏控制栏</string>
     <string name="lock_description">"点击画面右侧小锁可隐藏顶部状态栏和底部按钮，再点一次恢复。小锁只隐藏界面，鼠标控制仍可继续使用。\n隐藏控制栏后，小锁会在三秒无操作后隐去。将手的射线移到右侧原来的小锁位置即可显示，移开后会再次自动隐藏。"</string>
+    <string name="drag_distance">"左右滑动距离"</string>
+    <string name="scroll_speed">"上下滚动速度"</string>
+    <string name="motion_gain_help" formatted="false">"范围 25–200%，100% 保留原来的手感。滑动距离影响左右拖动；滚动速度影响上一条、下一条按钮和系统滚动输入。竖向输入越大、持续越久，滚动越多；横向每次推动只触发一次拖动。不会改变鼠标指针移动速度。"</string>
 </resources>

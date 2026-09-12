@@ -13,8 +13,8 @@ android {
         applicationId = "com.questlab.airplayreceiver"
         minSdk = 28
         targetSdk = 34
-        versionCode = 30
-        versionName = "0.2.23-auto-hide-lock-preview"
+        versionCode = 31
+        versionName = "0.2.24-motion-sliders-preview"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
