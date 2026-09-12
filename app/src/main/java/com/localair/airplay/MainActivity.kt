@@ -90,8 +90,11 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             setTextColor(Color.LTGRAY); textSize = 15f; gravity = Gravity.CENTER
             setPadding(12, 8, 12, 8)
             text = "Quest 投屏与鼠标 · 正在启动"
+            maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END
         }
-        root.addView(hidStatus, LinearLayout.LayoutParams(-1, -2))
+        // Status updates cannot change the weighted video area's size.
+        root.addView(hidStatus, LinearLayout.LayoutParams(-1, hidStatus.lineHeight+hidStatus.paddingTop+hidStatus.paddingBottom))
+        hidStatus.setOnClickListener { showCalibration() }
         val videoArea = FrameLayout(this)
         root.addView(videoArea, LinearLayout.LayoutParams(-1, 0, 1f))
         surfaceView = SurfaceView(this).apply {
@@ -204,11 +207,19 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private fun updateHidUi() {
         if (!::hidStatus.isInitialized) return
         val hid = attachedHid ?: return
-        hidStatus.text = hid.statusText()
-        if (rayMode && hid.isArmed) hidStatus.text = "相对射线：移动射线带动指针 · 扳机/确认键点击当前指针（非绝对定位）"
-        if (rayAlignment.enabled) hidStatus.text = "停稳对齐（实验）：${rayAlignment.status} · 不自动点击"
-        if(rayAlignment.calibration.isActive)hidStatus.text="校准进行中，自动对齐暂停 · ${rayAlignment.status}"
-        else if(hid.isArmed&&rayAlignment.calibration.status!="尚未校准")hidStatus.text=rayAlignment.calibration.status + if(rayAlignment.enabled) " · ${rayAlignment.status}" else ""
+        var primary=hid.statusText()
+        var detail=""
+        if(rayMode&&hid.isArmed){primary="相对射线控制";detail="移动射线带动指针；确认键点击当前指针"}
+        if(rayAlignment.enabled){primary=rayAlignment.status;detail="停稳对齐（实验） · 不自动点击"}
+        if(rayAlignment.calibration.isActive){
+            primary=if(rayAlignment.calibration.awaitingReference())"校准 · 最后确认（见页面）" else "校准 ${rayAlignment.calibration.stage()+1}/10 · 按页面提示操作"
+            detail=rayAlignment.calibration.status+" · "+rayAlignment.status
+        }else if(hid.isArmed&&rayAlignment.calibration.status!="尚未校准"){
+            if(rayAlignment.enabled)detail=rayAlignment.calibration.status
+            else primary=rayAlignment.calibration.status
+        }
+        if(hidStatus.text.toString()!=primary)hidStatus.text=primary
+        hidStatus.contentDescription=primary+"。"+detail
         alignButton.text = if(rayAlignment.calibration.isActive)"退出校准并对齐" else if (rayAlignment.enabled) "停稳对齐：开" else "停稳对齐：关"
         rayButton.text = if (rayMode) "相对射线：开" else "相对射线：关"
         controlButton.text = if (hid.isArmed) "暂停控制" else "启用控制"
@@ -223,13 +234,28 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     private fun showCalibration(){
         val calibration=rayAlignment.calibration
+        val panel=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(28,12,28,12)}
+        fun note(value:String,selectable:Boolean=false){panel.addView(TextView(this).apply {
+            text=value;textSize=16f;setPadding(0,8,0,8);setTextIsSelectable(selectable)
+        })}
+        note("首次：在 iPad 打开下面的底板，保持屏幕镜像。已经打开就直接开始。")
+        note(svc?.calibrationBoard?.address() ?: "底板服务尚未就绪",true)
+        note("在 Safari 分享菜单添加收藏；下次点收藏即可。网络地址改变时，以此处新地址为准。")
+        note("开始后，看同一投屏页面内的目标和文字完成步骤。无需点击目标，最后在 Quest 确认。")
+        val periods=android.widget.RadioGroup(this)
+        val choices=listOf(3 to "每3分钟复核",5 to "每5分钟复核（默认）")
+        for((minutes,label) in choices)periods.addView(android.widget.RadioButton(this).apply {id=minutes;text=label})
+        periods.check(calibration.intervalMinutes())
+        periods.setOnCheckedChangeListener {_,minutes ->
+            calibration.intervalMinutes(minutes)
+            getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putInt("calibration_minutes",minutes).apply()
+        }
+        panel.addView(periods)
+        note("当前：${calibration.status}\n${rayAlignment.status}")
         val dialog=android.app.AlertDialog.Builder(this)
-            .setTitle("iPad 底板：${svc?.calibrationBoard?.address() ?: "服务尚未就绪"}")
-            .setSingleChoiceItems(arrayOf("每3分钟复核可靠样本","每5分钟复核可靠样本（默认）"),if(calibration.intervalMinutes()==3)0 else 1){_,which ->
-                calibration.intervalMinutes(if(which==0)3 else 5)
-                getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putInt("calibration_minutes",calibration.intervalMinutes()).apply()
-            }
-            .setPositiveButton("开始 / 重新校准"){_,_ ->
+            .setTitle("校准")
+            .setView(android.widget.ScrollView(this).apply {addView(panel)})
+            .setPositiveButton("底板已打开，开始"){_,_ ->
                 pendingCalibrationStart=true
             }
             .setNeutralButton("取消当前校准"){_,_ -> rayAlignment.cancelCalibration()}
@@ -242,7 +268,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         pendingCalibrationStart=false
         if(attachedHid?.isArmed!=true)attachedHid?.toggleArmed()
         rayAlignment.beginCalibration()
-        android.widget.Toast.makeText(this,"请使用简单背景，按提示移动并停稳。最后指向真实指针按确认；校准期间不向 iPad 点击。",android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(this,"按投屏页面内的提示操作",android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun refreshVideoState() {
