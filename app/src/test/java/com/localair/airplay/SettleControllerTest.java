@@ -89,4 +89,12 @@ public class SettleControllerTest {
             assertTrue(count<=24);
         }
     }
+    @Test public void observationGapDoesNotResetTargetBudgetOrTerminalStop(){
+        SettleController c=new SettleController();c.target(100,100,0);
+        assertNotNull(c.observe(50,50,100,100,true,true,true));
+        // No observations are submitted while identity is uncertain.
+        assertNull(c.observe(60,60,10500,10500,true,true,true));
+        assertTrue(c.status.contains("上限"));
+        assertNull(c.observe(70,70,10600,10600,true,true,true));
+    }
 }

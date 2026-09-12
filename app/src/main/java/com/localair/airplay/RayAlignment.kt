@@ -12,7 +12,7 @@ import android.view.SurfaceView
 class RayAlignment(
     private val view: () -> SurfaceView,
     private val hid: () -> HidController?,
-    private val allowed: () -> Boolean,
+    private val gateReason: () -> String?,
     private val changed: () -> Unit
 ) {
     private val main = Handler(Looper.getMainLooper())
@@ -28,6 +28,7 @@ class RayAlignment(
     private var targetY = Double.NaN
     private var rayTime = 0L
     private var lastTimingLog = 0L
+    private var lastState = ""
     private var pixels = IntArray(0) // Sampling worker only.
     var enabled = false; private set
     var status = ""; private set
@@ -46,6 +47,14 @@ class RayAlignment(
         targetY=(y*scale).coerceIn(0.0,(h*scale).toInt()-1.0);rayTime=time
         policy.target(targetX,targetY,time)
     }
+    private fun publish(value: String) {
+        status=value
+        if(value!=lastState){
+            lastState=value
+            android.util.Log.i("RayAlignment","state target=${policy.targetRevision} reason=$value")
+            changed()
+        }
+    }
     private fun schedule() {
         main.removeCallbacks(pump)
         if (!closed && enabled) main.postDelayed(pump,60)
@@ -53,7 +62,13 @@ class RayAlignment(
     private val pump = object : Runnable {
         override fun run() {
             if (closed || !enabled) return
-            if (!allowed() || !targetX.isFinite()) { identity.reset(); policy.reset(); schedule(); return }
+            val gate=gateReason()
+            if (gate!=null || !targetX.isFinite()) {
+                identity.reset();policy.reset()
+                if(targetX.isFinite())policy.target(targetX,targetY,SystemClock.uptimeMillis())
+                publish(gate ?: "请指向投屏画面")
+                schedule();return
+            }
             if (busy) { schedule(); return }
             val surface=view(); val scale=minOf(1f,720f/maxOf(surface.width,surface.height).coerceAtLeast(1))
             val w=(surface.width*scale).toInt(); val h=(surface.height*scale).toInt()
@@ -75,27 +90,28 @@ class RayAlignment(
                     val detectedAt=SystemClock.uptimeMillis()
                     main.post {
                         busy=false
-                        if (!closed && enabled && generation==epoch && allowed()) {
+                        if (!closed && enabled && generation==epoch && gateReason()==null) {
                             val now=SystemClock.uptimeMillis()
-                            val trusted=identity.update(matches,targetX,targetY,requestTime)
-                            if(now-lastTimingLog>=1000){
-                                lastTimingLog=now
-                                android.util.Log.i("RayAlignment","observation copyResult=$code candidates=${matches.size} trusted=$trusted copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime}")
-                            }
+                            val fresh=now-requestTime in 0..250
+                            val trusted=if(fresh)identity.update(matches,targetX,targetY,requestTime) else {identity.reset();false}
+                            val point=matches.singleOrNull()
+                            val distance=point?.let{kotlin.math.hypot(policy.targetX()-it.x,policy.targetY()-it.y)}
+                            val ready=hid()?.canMovePointer()==true
                             if (trusted && matches.size==1) {
-                                val point=matches[0]
-                                val step=policy.observe(point.x.toDouble(),point.y.toDouble(),requestTime,now,true,true,hid()?.canMovePointer()==true)
+                                val confirmed=matches[0]
+                                val step=policy.observe(confirmed.x.toDouble(),confirmed.y.toDouble(),requestTime,now,true,true,ready)
                                 if (step!=null && hid()?.movePointer(step.x,step.y)!=true) policy.rejected()
                                 if (step!=null) android.util.Log.i("RayAlignment",
-                                    "correction dx=${step.x} dy=${step.y} error=${kotlin.math.hypot(targetX-point.x,targetY-point.y)} shape=${point.score} copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime} state=${policy.status}")
-                                status=policy.status
+                                    "correction target=${policy.targetRevision} dx=${step.x} dy=${step.y} error=$distance shape=${confirmed.score} copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime} state=${policy.status}")
+                                publish(policy.status + if(!ready) "：${hid()?.statusText()}" else "")
                             } else {
-                                // Losing identity cancels a pending correction; reacquisition needs new user motion.
-                                policy.reset()
-                                policy.target(targetX,targetY,rayTime)
-                                status="识别未确认，请缓慢移动射线"
+                                // Pause commands, preserving this target's command/time limits through a gap.
+                                publish(if(!fresh) "观察过旧，暂停对齐" else identity.reason)
                             }
-                            changed()
+                            if(now-lastTimingLog>=1000){
+                                lastTimingLog=now
+                                android.util.Log.i("RayAlignment","observation target=${policy.targetRevision} copyResult=$code candidates=${matches.size} trusted=$trusted identity=${identity.reason} shape=${point?.score} candidateDistance=$distance targetX=${policy.targetX()} targetY=${policy.targetY()} rayX=$targetX rayY=$targetY transportReady=$ready copyMs=${copiedAt-requestTime} detectMs=${detectedAt-copiedAt} totalMs=${now-requestTime} state=$status")
+                            }
                         }
                         schedule()
                     }

@@ -61,8 +61,14 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         super.onCreate(savedInstanceState)
         pointerObservation = PointerObservation(this)
         rayAlignment = RayAlignment({ surfaceView }, { attachedHid }, {
-            hasWindowFocus() && rayMode && attachedHid?.isArmed == true &&
-                surfaceReady && svc?.video?.hasRecentOutputFor(surfaceOwner) == true
+            when {
+                !hasWindowFocus() -> "投屏页未在前台"
+                !rayMode -> "射线模式已关闭"
+                attachedHid?.isArmed != true -> "鼠标控制尚未启用"
+                !surfaceReady -> "等待投屏画面"
+                svc?.video?.hasRecentOutputFor(surfaceOwner) != true -> "等待新的投屏帧"
+                else -> null
+            }
         }) { updateHidUi() }
         rayMode = getSharedPreferences("pointer_ui", MODE_PRIVATE).getBoolean("relative_ray_enabled", true)
         @Suppress("DEPRECATION")

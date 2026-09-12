@@ -28,4 +28,33 @@ public class PointerIdentityTrackerTest {
         for(int i=0;i<4;i++)assertFalse(t.update(List.of(c(40+i*5,.95)),80-i*5,40,i*150));
         assertFalse(t.update(List.of(c(60,.95)),60,40,100));
     }
+    private PointerIdentityTracker locked(){
+        PointerIdentityTracker t=new PointerIdentityTracker();
+        t.update(List.of(c(40,.95)),40,40,0);
+        t.update(List.of(c(45,.95)),45,40,100);
+        assertTrue(t.update(List.of(c(50,.95)),50,40,200));return t;
+    }
+    @Test public void briefMissingFrameRecoversOnlyAfterTwoStrongConsistentFrames(){
+        var t=locked();
+        assertFalse(t.update(List.of(),50,40,280));
+        assertFalse(t.update(List.of(c(51,.95)),50,40,360));
+        assertTrue(t.update(List.of(c(51,.95)),50,40,440));
+    }
+    @Test public void ambiguityErasesRecoveryEvenIfNearbyCandidateReturns(){
+        var t=locked();t.update(List.of(c(50,.95),c(80,.95)),50,40,280);
+        for(int i=0;i<5;i++)assertFalse(t.update(List.of(c(50,.95)),50,40,360+i*80));
+    }
+    @Test public void expiredOrDistantOrWeakCandidateCannotUseRecovery(){
+        for(int mode=0;mode<3;mode++){
+            var t=locked();assertFalse(t.update(List.of(),50,40,280));
+            long start=mode==0?800:360;
+            for(int i=0;i<3;i++)assertFalse(t.update(List.of(c(mode==1?90:50,mode==2?.88:.95)),50,40,start+i*80));
+        }
+    }
+    @Test public void duplicateRecoveryObservationDoesNotCountAsSecondFrame(){
+        var t=locked();t.update(List.of(),50,40,280);
+        assertFalse(t.update(List.of(c(50,.95)),50,40,360));
+        assertFalse(t.update(List.of(c(50,.95)),50,40,360));
+        assertFalse(t.update(List.of(c(50,.95)),50,40,440));
+    }
 }

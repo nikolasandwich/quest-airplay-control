@@ -14,10 +14,13 @@ public final class SettleController {
     private double commandX,commandY,gain=1;
     private int commandDx,commandDy;
     public String status="请移动射线";
+    public int targetRevision;
+    public double targetX(){return tx;}
+    public double targetY(){return ty;}
     public void reset(){changedAt=started=lastCommand=lastFrame=-1;steps=stalled=alignedFrames=0;blocked=false;responseEvaluated=false;lastError=Double.NaN;gain=1;status="请移动射线";}
     public void target(double x,double y,long now){
         if(!Double.isFinite(x)||!Double.isFinite(y)){reset();return;}
-        if(changedAt<0||Math.hypot(x-tx,y-ty)>3){reset();tx=x;ty=y;changedAt=now;status="等待射线停稳";}
+        if(changedAt<0||Math.hypot(x-tx,y-ty)>3){reset();targetRevision++;tx=x;ty=y;changedAt=now;status="等待射线停稳";}
     }
     public Step observe(double x,double y,long frameTime,long now,boolean trusted,boolean allowed,boolean transportReady){
         if(changedAt<0||blocked)return null;
@@ -31,11 +34,11 @@ public final class SettleController {
         // Wait for visible displacement before issuing another command; a fresh copy alone
         // does not establish that AirPlay has carried the previous command back.
         if(lastCommand>=0){
-            if(now-lastCommand<100)return null;
-            if(Math.hypot(x-commandX,y-commandY)<2 && now-lastCommand<450)return null;
+            if(now-lastCommand<100){status="等待上一动作反馈";return null;}
+            if(Math.hypot(x-commandX,y-commandY)<2 && now-lastCommand<450){status="等待画面中的指针移动";return null;}
         }
         double error=Math.hypot(tx-x,ty-y);
-        if(error<=3){if(++alignedFrames>=2){blocked=true;status="位置已接近（约3像素内）";}return null;}
+        if(error<=3){status="正在确认接近位置";if(++alignedFrames>=2){blocked=true;status="已到容差范围（3个采样像素内）";}return null;}
         alignedFrames=0;
         if(lastCommand>=0&&!responseEvaluated&&Double.isFinite(lastError)) {
             responseEvaluated=true;
@@ -45,7 +48,7 @@ public final class SettleController {
                     (commandDx*commandDx+commandDy*commandDy);
             if(observedGain>=.25&&observedGain<=4)gain=.5*gain+.5*observedGain;
         }
-        if(!transportReady)return null;
+        if(!transportReady){status="等待蓝牙输入就绪";return null;}
         int cap=error>80?24:error>20?12:4;
         int dx=quantize((tx-x)*.35/gain,cap),dy=quantize((ty-y)*.35/gain,cap);
         if(dx==0&&dy==0){
