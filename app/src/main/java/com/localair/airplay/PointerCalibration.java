@@ -36,6 +36,8 @@ public final class PointerCalibration {
     public void intervalMinutes(int minutes){if(minutes!=3&&minutes!=5)throw new IllegalArgumentException();interval=minutes*60000L;}
     public void begin(long now){active=true;step=0;started=now;candidate=null;validationError=0;positionValid=false;java.util.Arrays.fill(samples,null);invalidateSegment();status="先轻移射线识别指针，再按提示移动；保持远离屏幕边缘";}
     public void cancel(){active=false;candidate=null;invalidateSegment();status=gain==null?"校准已取消，保持直接控制":"校准已取消，保留原移动比例";}
+    public void tick(long now){if(active&&now-started>=180000){cancel();status="校准超时，保持直接控制";}}
+    public void resetForDirectControl(){cancel();gain=null;positionValid=false;java.util.Arrays.fill(passive,null);status="直接控制 · 无需校准";}
     public void invalidateSegment(){baseline=false;hx=hy=0;firstInput=-1;stableSince=-1;}
     public void geometry(int w,int h){
         if(width>0&&(Math.abs(width-w)>2||Math.abs(height-h)>2)){gain=null;positionValid=false;if(active)cancel();status="画面尺寸改变，请重新校准";java.util.Arrays.fill(passive,null);}
@@ -51,10 +53,10 @@ public final class PointerCalibration {
         if(Math.hypot(dx,dy)>=2){lastSignificantInput=now;stableSince=-1;}
     }
     public void observe(double x,double y,long now,boolean trusted,boolean idle){
+        tick(now);
         if(!active&&gain!=null&&now-lastUpdate>=interval&&status.startsWith("校准完成"))status="周期复核已到，等待可靠的自然移动样本";
         if(!trusted||!Double.isFinite(x)||!Double.isFinite(y)){latestAt=-1;invalidateSegment();return;}
         latestX=x;latestY=y;latestAt=now;
-        if(active&&now-started>180000){cancel();status="校准超时，保持直接控制";return;}
         if(awaitingReference()){status="指向真实指针尖端，按扳机/确认完成（只确认本地校准）";return;}
         if(!idle){stableSince=-1;return;}
         if(now-lastSignificantInput<350)return;

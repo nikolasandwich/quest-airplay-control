@@ -16,7 +16,7 @@ class HidIntegrationTest {
         instrumentation.runOnMainSync { hid = HidController(instrumentation.targetContext) }
     }
     private fun field(name: String) = HidController::class.java.getDeclaredField(name).apply { isAccessible = true }
-    @After fun tearDown() { instrumentation.runOnMainSync { hid.detachUi(owner) } }
+    @After fun tearDown() { instrumentation.runOnMainSync { hid.detachUi(owner);hid.close() } }
     private val owner = Any()
 
     @Test fun testFocusLossCancelsArmingAndPendingGesture() {

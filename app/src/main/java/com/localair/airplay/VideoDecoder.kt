@@ -48,6 +48,7 @@ class VideoDecoder(
     @Volatile private var confirmedSurfaceOwner: Any? = null
     @Volatile private var lastOutputSubmittedAt = -1L
     fun hasFramesFor(owner: Any?) = owner != null && confirmedSurfaceOwner === owner && hasFrames
+    fun displayDiagnostic(owner:Any?)="owner=${System.identityHashCode(owner)} requested=${System.identityHashCode(requestedTarget.get()?.owner)} confirmed=${System.identityHashCode(confirmedSurfaceOwner)} frames=$hasFrames fed=$fed rendered=$rendered"
     // Liveness gate only; a submission timestamp is not proof of visible content.
     fun hasRecentOutputFor(owner: Any?) = hasFramesFor(owner) &&
         lastOutputSubmittedAt >= 0 && SystemClock.uptimeMillis()-lastOutputSubmittedAt in 0..500

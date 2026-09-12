@@ -45,7 +45,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var pointerObservation: PointerObservation
     private lateinit var rayAlignment: RayAlignment
     private lateinit var alignButton: Button
-    private var pendingCalibrationStart=false
+    private var pendingControlRestore=false
+    private var lastWaitingDecision=""
 
     private val svc get() = AirPlayService.instance
 
@@ -94,7 +95,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
         // Status updates cannot change the weighted video area's size.
         root.addView(hidStatus, LinearLayout.LayoutParams(-1, hidStatus.lineHeight+hidStatus.paddingTop+hidStatus.paddingBottom))
-        hidStatus.setOnClickListener { showCalibration() }
+        hidStatus.setOnClickListener { showControlHelp() }
         val videoArea = FrameLayout(this)
         root.addView(videoArea, LinearLayout.LayoutParams(-1, 0, 1f))
         surfaceView = SurfaceView(this).apply {
@@ -139,12 +140,12 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         controlButton = action(primary, "启用控制") { svc?.hid?.toggleArmed(); updateHidUi() }
         previousButton = action(primary, "上一条") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(1) }
         nextButton = action(primary, "下一条") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.scrollPage(-1) }
-        action(primary, "校准") { showCalibration() }
+        action(primary, "恢复控制") { restoreDirectControl() }
         lateinit var speedButton: Button
-        speedButton=action(primary,if(rayAlignment.isFast())"跟手优先" else "稳定优先") {
+        speedButton=action(primary,if(rayAlignment.isFast())"辅助：跟手优先" else "辅助：稳定优先") {
             rayAlignment.toggleSpeed()
             getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("fast_alignment",rayAlignment.isFast()).apply()
-            speedButton.text=if(rayAlignment.isFast())"跟手优先" else "稳定优先"
+            speedButton.text=if(rayAlignment.isFast())"辅助：跟手优先" else "辅助：稳定优先"
         }
         leftButton = action(pointer, "左滑（拖拽）") { rayAlignment.calibration.externalAction(); svc?.hid?.dragPointer(-1) }
         clickButton = action(pointer, "点击当前指针") { rayAlignment.calibration.invalidateSegment(); svc?.hid?.clickPointer() }
@@ -157,7 +158,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             updateHidUi()
             refreshVideoState()
         }
-        alignButton = action(pointer, "停稳对齐：关") {
+        alignButton = action(pointer, "辅助对齐：关") {
             rayAlignment.setEnabled(!rayAlignment.enabled)
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, -2))
@@ -210,7 +211,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         var primary=hid.statusText()
         var detail=""
         if(rayMode&&hid.isArmed){primary="相对射线控制";detail="移动射线带动指针；确认键点击当前指针"}
-        if(rayAlignment.enabled){primary=rayAlignment.status;detail="停稳对齐（实验） · 不自动点击"}
+        if(rayAlignment.enabled&&hid.isArmed){primary="辅助对齐 · "+rayAlignment.status;detail="实验辅助识别失败时，直接移动仍可用"}
         if(rayAlignment.calibration.isActive){
             primary=if(rayAlignment.calibration.awaitingReference())"校准 · 最后确认（见页面）" else "校准 ${rayAlignment.calibration.stage()+1}/10 · 按页面提示操作"
             detail=rayAlignment.calibration.status+" · "+rayAlignment.status
@@ -220,7 +221,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
         if(hidStatus.text.toString()!=primary)hidStatus.text=primary
         hidStatus.contentDescription=primary+"。"+detail
-        alignButton.text = if(rayAlignment.calibration.isActive)"退出校准并对齐" else if (rayAlignment.enabled) "停稳对齐：开" else "停稳对齐：关"
+        alignButton.text = if (rayAlignment.enabled) "辅助对齐：开" else "辅助对齐：关"
         rayButton.text = if (rayMode) "相对射线：开" else "相对射线：关"
         controlButton.text = if (hid.isArmed) "暂停控制" else "启用控制"
         val actionsAllowed=hid.isArmed&&!rayAlignment.calibration.isActive
@@ -232,49 +233,47 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         refreshVideoState()
     }
 
-    private fun showCalibration(){
-        val calibration=rayAlignment.calibration
+    private fun showControlHelp(){
         val panel=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(28,12,28,12)}
         fun note(value:String,selectable:Boolean=false){panel.addView(TextView(this).apply {
             text=value;textSize=16f;setPadding(0,8,0,8);setTextIsSelectable(selectable)
         })}
-        note("首次：在 iPad 打开下面的底板，保持屏幕镜像。已经打开就直接开始。")
-        note(svc?.calibrationBoard?.address() ?: "底板服务尚未就绪",true)
-        note("在 Safari 分享菜单添加收藏；下次点收藏即可。网络地址改变时，以此处新地址为准。")
-        note("开始后，看同一投屏页面内的目标和文字完成步骤。无需点击目标，最后在 Quest 确认。")
-        val periods=android.widget.RadioGroup(this)
-        val choices=listOf(3 to "每3分钟复核",5 to "每5分钟复核（默认）")
-        for((minutes,label) in choices)periods.addView(android.widget.RadioButton(this).apply {id=minutes;text=label})
-        periods.check(calibration.intervalMinutes())
-        periods.setOnCheckedChangeListener {_,minutes ->
-            calibration.intervalMinutes(minutes)
-            getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putInt("calibration_minutes",minutes).apply()
-        }
-        panel.addView(periods)
-        note("当前：${calibration.status}\n${rayAlignment.status}")
+        note("连接鼠标后启用控制，移动射线带动 iPad 指针；确认键点击真实指针当前位置。无需打开网页或做校准。")
+        note("辅助对齐是可选实验。识别不到时仍可直接移动；点“恢复控制”可退出辅助、恢复基础移动比例。")
+        note("恢复控制不会把 iPad 指针移到中央。当前尚无可靠的跨应用绝对回中功能。")
+        note("当前：${attachedHid?.statusText()}\n${if(rayAlignment.enabled)rayAlignment.status else "直接控制，无需识别"}")
         val dialog=android.app.AlertDialog.Builder(this)
-            .setTitle("校准")
+            .setTitle("鼠标控制")
             .setView(android.widget.ScrollView(this).apply {addView(panel)})
-            .setPositiveButton("底板已打开，开始"){_,_ ->
-                pendingCalibrationStart=true
+            .setPositiveButton("恢复直接控制"){_,_ ->
+                pendingControlRestore=true
             }
-            .setNeutralButton("取消当前校准"){_,_ -> rayAlignment.cancelCalibration()}
             .setNegativeButton("关闭",null).create()
-        dialog.setOnDismissListener {window.decorView.post { startPendingCalibration() }}
+        dialog.setOnDismissListener {window.decorView.post { restoreWhenFocused() }}
         dialog.show()
     }
-    private fun startPendingCalibration(){
-        if(!pendingCalibrationStart || !hasWindowFocus())return
-        pendingCalibrationStart=false
+    private fun restoreWhenFocused(){
+        if(!pendingControlRestore || !hasWindowFocus())return
+        pendingControlRestore=false
+        restoreDirectControl()
+    }
+    private fun restoreDirectControl(){
+        rayAlignment.cancelCalibration()
+        rayAlignment.setEnabled(false)
+        rayAlignment.calibration.resetForDirectControl()
+        rayMode=true
+        getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("relative_ray_enabled",true).apply()
+        rayView.resetInput()
         if(attachedHid?.isArmed!=true)attachedHid?.toggleArmed()
-        rayAlignment.beginCalibration()
-        android.widget.Toast.makeText(this,"按投屏页面内的提示操作",android.widget.Toast.LENGTH_SHORT).show()
+        updateHidUi()
     }
 
     private fun refreshVideoState() {
         if (!::waiting.isInitialized) return
         // Broadcasts are notifications; always read the current service snapshot.
-        waiting.visibility = if (surfaceReady && svc?.video?.hasFramesFor(surfaceOwner) == true) View.GONE else View.VISIBLE
+        waiting.visibility = if (VideoUiState.showWaiting(isInPictureInPictureMode,surfaceReady,svc?.video?.hasFramesFor(surfaceOwner)==true)) View.VISIBLE else View.GONE
+        val decision="waiting=${waiting.visibility==View.VISIBLE} pip=$isInPictureInPictureMode ready=$surfaceReady owner=${System.identityHashCode(surfaceOwner)}"
+        if(decision!=lastWaitingDecision){lastWaitingDecision=decision;android.util.Log.i("AirPlayDisplay",decision+" "+svc?.video?.displayDiagnostic(surfaceOwner))}
         if (::rayView.isInitialized) {
             val usable = rayMode && waiting.visibility == View.GONE && attachedHid?.isArmed == true && !isInPictureInPictureMode
             rayView.visibility = if (usable) View.VISIBLE else View.GONE
@@ -311,16 +310,16 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         attachedHid?.setFocused(inputOwner, hasFocus)
         if (!hasFocus && ::rayView.isInitialized) rayView.resetInput()
         if (!hasFocus && ::pointerObservation.isInitialized) pointerObservation.cancel()
-        if(hasFocus&&::rayAlignment.isInitialized)startPendingCalibration()
+        if(hasFocus&&::rayAlignment.isInitialized)restoreWhenFocused()
     }
 
     override fun onPause() {
-        pendingCalibrationStart=false
+        pendingControlRestore=false
         if(rayAlignment.calibration.isActive)rayAlignment.cancelCalibration()
         rayAlignment.calibration.externalAction()
         rayAlignment.setEnabled(false)
         android.util.Log.i("AirPlayLifecycle", "pause surfaceReady=$surfaceReady")
-        surfaceOwner?.let { svc?.video?.parkBeforeWindowStops(it) }
+        if(VideoUiState.parkOnPause(isInPictureInPictureMode))surfaceOwner?.let { svc?.video?.parkBeforeWindowStops(it) }
         pointerObservation.cancel()
         if (::rayView.isInitialized) rayView.resetInput()
         attachedHid?.setFocused(inputOwner, false)
@@ -426,6 +425,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         waiting.visibility = View.VISIBLE
         rayView.resetInput()
         rayView.visibility = View.GONE
+        refreshVideoState()
     }
 
     override fun onDestroy() {
@@ -449,8 +449,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         if (inPip) attachedHid?.setFocused(inputOwner, false)
         rayView.resetInput()
         rayView.visibility = View.GONE
-        waiting.visibility = if (inPip) View.GONE else
-            if (svc?.video?.hasFrames == true) View.GONE else View.VISIBLE
+        refreshVideoState()
     }
 
     private fun enterPip() {

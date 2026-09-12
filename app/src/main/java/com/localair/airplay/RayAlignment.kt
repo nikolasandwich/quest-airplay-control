@@ -27,12 +27,13 @@ class RayAlignment(
     val calibration = PointerCalibration()
     var interactionIdle: () -> Boolean = { true }
     private fun samplingNeeded()=enabled || calibration.isActive || calibration.hasGain()
-    fun beginCalibration(){enabled=false;calibration.begin(SystemClock.uptimeMillis());invalidateTarget();main.removeCallbacks(pump);main.post(pump);changed()}
+    private val calibrationDeadline=Runnable {calibration.tick(SystemClock.uptimeMillis());publish(calibration.status);changed()}
+    fun beginCalibration(){enabled=false;calibration.begin(SystemClock.uptimeMillis());main.removeCallbacks(calibrationDeadline);main.postDelayed(calibrationDeadline,180000);invalidateTarget();main.removeCallbacks(pump);main.post(pump);changed()}
     fun confirmCalibration(){
         calibration.confirm(targetX,targetY,SystemClock.uptimeMillis())
         publish(calibration.status)
     }
-    fun cancelCalibration(){calibration.cancel();publish(calibration.status);changed()}
+    fun cancelCalibration(){main.removeCallbacks(calibrationDeadline);calibration.cancel();publish(calibration.status);changed()}
     fun rayReport(x:Int,y:Int,time:Long,ok:Boolean){if(!closed)calibration.report(x,y,time,ok)}
     private var epoch = 0
     private var busy = false
@@ -78,6 +79,7 @@ class RayAlignment(
     }
     private val pump = object : Runnable {
         override fun run() {
+            calibration.tick(SystemClock.uptimeMillis())
             if (closed || !samplingNeeded()) return
             val gate=gateReason()
             if (gate!=null || !targetX.isFinite()) {
@@ -150,5 +152,5 @@ class RayAlignment(
             }
         }
     }
-    fun close(){closed=true;enabled=false;epoch++;main.removeCallbacks(pump);thread.quitSafely()}
+    fun close(){closed=true;enabled=false;epoch++;main.removeCallbacksAndMessages(null);thread.quitSafely()}
 }

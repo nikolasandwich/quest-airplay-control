@@ -61,7 +61,7 @@ class AirPlayService : Service() {
     override fun onDestroy() {
         instance = null
         handler.removeCallbacksAndMessages(null)
-        hid.stop()
+        hid.close()
         calibrationBoard?.close()
         if (::mdns.isInitialized) mdns.unregister()
         AirPlayNative.setVideoSink(null)
@@ -104,7 +104,7 @@ class AirPlayService : Service() {
                     Log.w(TAG, "raop died — restarting receiver")
                     AirPlayNative.stop()
                     if (::mdns.isInitialized) mdns.unregister()
-                    audio.release()
+                    audio.resetSession()
                     startReceiver()
                 }
                 handler.postDelayed(this, HEALTH_INTERVAL_MS)

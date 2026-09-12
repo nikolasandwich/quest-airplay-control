@@ -21,8 +21,10 @@ public final class HidController extends ContextWrapper {
     private Object uiOwner;
     private Runnable listener;
     private String lastStatus="鼠标未连接";
+    private final AsyncDiagnosticLog diagnostics;
     public HidController(Context context) {
         super(context);
+        diagnostics=new AsyncDiagnosticLog(new java.io.File(getFilesDir(),"hid-diagnostic.log"),message -> Log.w("QuestHidLab",message));
         BluetoothManager manager=getSystemService(BluetoothManager.class);
         adapter=manager==null?null:manager.getAdapter();
         mappedScroll.configure(false,1,6);
@@ -76,16 +78,13 @@ public final class HidController extends ContextWrapper {
         return lastStatus;
     }
     private void changed(){if(listener!=null)listener.run();}
-    private synchronized void note(String text) {
+    private void note(String text) {
         Log.i("QuestHidLab",text);
-        lastStatus=text;
-        try {
-            java.io.File log=new java.io.File(getFilesDir(),"hid-diagnostic.log");
-            if(log.length()>262144){java.io.File old=new java.io.File(getFilesDir(),"hid-diagnostic.previous.log");java.nio.file.Files.move(log.toPath(),old.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);}
-            try(java.io.FileWriter writer=new java.io.FileWriter(log,true)){writer.write(System.currentTimeMillis()+" "+text+"\n");}
-        }catch(java.io.IOException e){Log.w("QuestHidLab","Diagnostic file unavailable");}
-        handler.post(this::changed);
+        diagnostics.append(System.currentTimeMillis()+" "+text);
+        boolean sample=text.startsWith("mode=")||text.startsWith("notification complete=")||text.startsWith("SCROLL source=")||text.startsWith("GATT read")||text.startsWith("GATT descriptor read");
+        if(!sample){lastStatus=text;handler.removeCallbacks(statusChanged);handler.post(statusChanged);}
     }
+    private final Runnable statusChanged=this::changed;
     public boolean permitted() {
         return Build.VERSION.SDK_INT<31 || (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)==PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)==PackageManager.PERMISSION_GRANTED);
     }
@@ -137,6 +136,8 @@ public final class HidController extends ContextWrapper {
     private int pointerEpoch, releaseAttempts;
     private boolean releaseUnconfirmed;
     private static final class PendingReport {
+        final ReportDeadline deadline=new ReportDeadline(SystemClock.uptimeMillis());
+        Runnable timeout;
         ReportCompletion completion;
         final PointerAction.Packet pointer;
         PendingReport(PointerAction.Packet pointer){this.pointer=pointer;}
@@ -182,7 +183,9 @@ public final class HidController extends ContextWrapper {
     }};
     private void resetPointerLink(){
         handler.removeCallbacks(pointerPump);handler.removeCallbacks(pointerTimeout);
-        pointerAction.disconnected();pointerHost=null;pendingReports.clear();notificationPending=false;releaseUnconfirmed=false;
+        pointerAction.disconnected();pointerHost=null;
+        for(PendingReport p:pendingReports){if(p.timeout!=null)handler.removeCallbacks(p.timeout);p.deadline.acknowledge();if(p.completion!=null)p.completion.complete(false);}
+        pendingReports.clear();notificationPending=false;releaseUnconfirmed=false;
         values.put(uuid(0x2a4d),new byte[4]);values.put(uuid(0x2a33),new byte[3]);horizontalGate.reset();
     }
     private void failPointerRelease(){
@@ -398,6 +401,8 @@ public final class HidController extends ContextWrapper {
         @Override public void onNotificationSent(BluetoothDevice d,int code){ handler.post(() -> { if(epoch!=generation || server==null || !d.equals(host))return;
             PendingReport completedReport=pendingReports.poll();notificationPending=!pendingReports.isEmpty();
             if(completedReport==null)return;
+            handler.removeCallbacks(completedReport.timeout);
+            if(!completedReport.deadline.acknowledge())return;
             if(completedReport.completion!=null)completedReport.completion.complete(code==0);
             completed++;note("notification complete="+completed+" status="+code);
             if(completedReport.pointer!=null){
@@ -417,6 +422,17 @@ public final class HidController extends ContextWrapper {
     private boolean transmit(int buttons,int x,int y,int wheel,PointerAction.Packet pointer){
         return transmit(buttons,x,y,wheel,pointer,null);
     }
+    private void armReportDeadline(PendingReport queued,int submittedGeneration){
+        queued.timeout=() -> {
+            if(generation!=submittedGeneration||!pendingReports.contains(queued)||!queued.deadline.expire(SystemClock.uptimeMillis()))return;
+            // Retire the server generation: late ACKs cannot name their original report.
+            stop();needsReconnect=true;
+            note("鼠标传输确认超时 · 已停止旧连接，请重连原设备");
+            final int retiredGeneration=generation;
+            handler.postDelayed(() -> {if(generation==retiredGeneration&&server==null&&permitted())start();},1000);
+        };
+        handler.postDelayed(queued.timeout,1000);
+    }
     private boolean transmit(int buttons,int x,int y,int wheel,PointerAction.Packet pointer,ReportCompletion completion){
         BluetoothDevice peer=host;BluetoothGattServer gatt=server;boolean boot=protocolMode==0;
         if(peer==null||gatt==null||!permitted())return false;
@@ -433,7 +449,8 @@ public final class HidController extends ContextWrapper {
             if(Build.VERSION.SDK_INT>=33){int code=gatt.notifyCharacteristicChanged(peer,input,false,data);accepted=code==0;note("mode="+(boot?"BOOT":"REPORT")+" bytes="+data.length+" buttons="+buttons+" x="+x+" y="+y+" wheel="+wheel+" send="+(++sent)+" status="+code);}
             else {input.setValue(data);accepted=gatt.notifyCharacteristicChanged(peer,input,false);note("send="+(++sent)+" accepted="+accepted);}
         }catch(RuntimeException e){Log.w("QuestHidLab","Report submission failed",e);}
-        if(!accepted){pendingReports.remove(queued);notificationPending=!pendingReports.isEmpty();cancelGesture();mappedScroll.stop();}
+        if(!accepted){queued.deadline.acknowledge();pendingReports.remove(queued);notificationPending=!pendingReports.isEmpty();cancelGesture();mappedScroll.stop();}
+        else armReportDeadline(queued,generation);
         return accepted;
     }
     public void stop(){
@@ -452,4 +469,5 @@ public final class HidController extends ContextWrapper {
         if(adapter!=null&&permitted()&&adapter.getBluetoothLeAdvertiser()!=null)adapter.getBluetoothLeAdvertiser().stopAdvertising(advertiseCallback);
         if(server!=null){server.close();server=null;}host=null;advertising=false;note("BLE experiment stopped");
     }
+    public void close(){stop();handler.removeCallbacksAndMessages(null);diagnostics.close();}
 }

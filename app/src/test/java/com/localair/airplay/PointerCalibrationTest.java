@@ -4,6 +4,12 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class PointerCalibrationTest {
+    @Test public void missingIdentityStillExpiresAndIndependentClockWorksWithoutObservations(){
+        PointerCalibration c=new PointerCalibration();c.begin(1000);
+        c.observe(Double.NaN,Double.NaN,181000,false,true);assertFalse(c.isActive());
+        c.begin(200000);c.tick(379999);assertTrue(c.isActive());c.tick(380000);assertFalse(c.isActive());
+        assertFalse(c.hasGain());assertFalse(c.hasPosition());
+    }
     static PointerCalibration.Sample[] dataset(){
         PointerCalibration.Sample[] s=new PointerCalibration.Sample[10];
         for(int i=0;i<8;i++){

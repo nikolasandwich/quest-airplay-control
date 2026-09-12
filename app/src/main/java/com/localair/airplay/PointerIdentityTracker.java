@@ -44,7 +44,7 @@ public final class PointerIdentityTracker {
         double dx=c.x-anchor.x,dy=c.y-anchor.y,drx=rx-rayX,dry=ry-rayY;
         if(frames>=3&&Math.hypot(dx,dy)>=4&&Math.hypot(drx,dry)>=4&&dx*drx+dy*dry>0)locked=true;
         if(locked){recent=c;recentAt=time;recovery=null;reason="已确认指针";}
-        else reason="身份未确认，等待射线与指针同向移动";
+        else reason="尚未认出鼠标指针；直接控制仍可用";
         return locked;
     }
 }
