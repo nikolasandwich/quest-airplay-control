@@ -28,6 +28,8 @@ public final class PointerIdentityTracker {
         if(recentAt>=0&&(time<recentAt||time-recentAt>500)){recent=null;recovery=null;recentAt=-1;}
         if(candidates.size()!=1)return lost(candidates.isEmpty()?AppText.get(R.string.pointer_not_visible_reacquiring):AppText.get(R.string.multiple_candidates_alignment_paused),candidates.isEmpty());
         var c=candidates.get(0);
+        if(previous!=null&&c.circular!=previous.circular)return lost(AppText.get(R.string.position_jumped_detecting_again),false);
+        if(recent!=null&&c.circular!=recent.circular)return lost(AppText.get(R.string.position_jumped_detecting_again),false);
         if(c.score<(locked?.80:.86))return lost(AppText.get(R.string.outline_unclear_alignment_paused),true);
         if(previous!=null&&Math.hypot(c.x-previous.x,c.y-previous.y)>100)return lost(AppText.get(R.string.position_jumped_detecting_again),false);
         // A recent established identity may recover only after two unique, strong,
