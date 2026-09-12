@@ -51,6 +51,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private var alignmentRequested=true
     private lateinit var settingsPage: View
     private lateinit var mainPage: View
+    private lateinit var chromeLock: Button
+    private var chromeHidden=false
     private val settingsBack = object : androidx.activity.OnBackPressedCallback(false) {
         override fun handleOnBackPressed(){closeSettingsPage()}
     }
@@ -162,6 +164,20 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         mainPage=root
         val pages=FrameLayout(this)
         pages.addView(root,FrameLayout.LayoutParams(-1,-1))
+        chromeHidden=savedInstanceState?.getBoolean("chrome_hidden",false)?:false
+        chromeLock=Button(this).apply {
+            textSize=22f;minWidth=0;minimumWidth=0;setPadding(0,0,0,0)
+            setTextColor(Color.WHITE)
+            background=android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.argb(190,35,43,56));cornerRadius=24*resources.displayMetrics.density
+            }
+            setOnClickListener {chromeHidden=!chromeHidden;rayView.resetInput();updateChrome()}
+        }
+        val lockSize=(48*resources.displayMetrics.density).toInt()
+        pages.addView(chromeLock,FrameLayout.LayoutParams(lockSize,lockSize,Gravity.END or Gravity.CENTER_VERTICAL).apply {
+            marginEnd=(8*resources.displayMetrics.density).toInt()
+        })
+        updateChrome()
         settingsPage=createSettingsPage().apply {visibility=View.GONE}
         pages.addView(settingsPage,FrameLayout.LayoutParams(-1,-1))
         setContentView(pages)
@@ -398,6 +414,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
     private fun openSettingsPage(){
         settingsOpen=true;settingsBack.isEnabled=true;pendingControlRestore=false
+        updateChrome()
         attachedHid?.setFocused(inputOwner,false)
         rayAlignment.setEnabled(false);rayView.resetInput();pointerObservation.cancel()
         mainPage.importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
@@ -406,12 +423,14 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
     private fun closeSettingsPage(){
         settingsOpen=false;settingsBack.isEnabled=false;settingsPage.visibility=View.GONE
+        updateChrome()
         mainPage.importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         attachedHid?.setFocused(inputOwner,hasWindowFocus())
         syncAlignmentPreference()
         updateHidUi();refreshVideoState()
     }
     override fun onSaveInstanceState(outState:Bundle){
+        outState.putBoolean("chrome_hidden",chromeHidden)
         outState.putBoolean("settings_open",settingsOpen)
         super.onSaveInstanceState(outState)
     }
@@ -487,6 +506,13 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         if(settingsOpen)return super.dispatchGenericMotionEvent(event)
+        if(::chromeLock.isInitialized&&chromeLock.isShown){
+            val bounds=android.graphics.Rect()
+            if(chromeLock.getGlobalVisibleRect(bounds)&&bounds.contains(event.rawX.toInt(),event.rawY.toInt())){
+                rayView.resetInput()
+                return super.dispatchGenericMotionEvent(event)
+            }
+        }
         if(::rayAlignment.isInitialized && rayAlignment.calibration.isActive && event.isFromSource(android.view.InputDevice.SOURCE_JOYSTICK))return true
         if(::rayAlignment.isInitialized && rayAlignment.calibration.isActive && event.actionMasked==MotionEvent.ACTION_SCROLL)return true
         if(::rayAlignment.isInitialized && event.actionMasked==MotionEvent.ACTION_SCROLL)rayAlignment.calibration.externalAction()
@@ -634,12 +660,21 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onPictureInPictureModeChanged(inPip: Boolean) {
         super.onPictureInPictureModeChanged(inPip)
-        controls.visibility = if (inPip) View.GONE else View.VISIBLE
-        hidStatus.visibility = if (inPip) View.GONE else View.VISIBLE
+        updateChrome()
         if (inPip) attachedHid?.setFocused(inputOwner, false)
         rayView.resetInput()
         rayView.visibility = View.GONE
         refreshVideoState()
+    }
+
+    private fun updateChrome(){
+        val hide=chromeHidden||isInPictureInPictureMode
+        controls.visibility=if(hide)View.GONE else View.VISIBLE
+        hidStatus.visibility=if(hide)View.GONE else View.VISIBLE
+        chromeLock.visibility=if(isInPictureInPictureMode||settingsOpen)View.GONE else View.VISIBLE
+        chromeLock.text=if(chromeHidden)"\uD83D\uDD12" else "\uD83D\uDD13"
+        chromeLock.contentDescription=AppText.get(if(chromeHidden)R.string.show_controls else R.string.hide_controls)
+        chromeLock.tooltipText=chromeLock.contentDescription
     }
 
     private fun enterPip() {

@@ -156,4 +156,6 @@
     <string name="start_card_3">"3. 连接鼠标\n返回投屏页，点击连接鼠标；如有提示，请允许蓝牙访问。到 iPad 蓝牙设置中配对或重新连接 Quest 鼠标设备。"</string>
     <string name="start_card_4">"4. 启用控制\n点击启用控制。移动射线即可移动 iPad 指针，确认操作会点击指针当前位置，无需校准。"</string>
     <string name="start_card_5">"5. 日常使用\n需要时暂停控制。语言、射线和辅助对齐在设置中；退出设置后需重新启用控制。恢复控制会关闭辅助，但不会让指针回到中央。"</string>
+    <string name="show_controls">显示控制栏</string>
+    <string name="hide_controls">隐藏控制栏</string>
 </resources>

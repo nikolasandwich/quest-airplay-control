@@ -156,4 +156,6 @@
     <string name="start_card_3">"3. Connect the mouse\nReturn to mirroring and select Connect mouse. Allow Bluetooth access if asked. In iPad Bluetooth settings, pair or reconnect the Quest mouse device."</string>
     <string name="start_card_4">"4. Enable control\nSelect Enable control. Move the ray to move the iPad pointer; confirm clicks the pointer position. No calibration is needed."</string>
     <string name="start_card_5">"5. Everyday use\nPause control when needed. Settings contains language, ray and alignment options. After leaving Settings, enable control again. Restore control turns assist off; it does not center the pointer."</string>
+    <string name="show_controls">Show controls</string>
+    <string name="hide_controls">Hide controls</string>
 </resources>

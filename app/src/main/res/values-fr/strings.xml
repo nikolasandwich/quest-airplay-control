@@ -156,4 +156,6 @@
     <string name="start_card_3">"3. Connecter la souris\nRevenez à la recopie et choisissez Connecter la souris. Autorisez le Bluetooth si nécessaire. Associez ou reconnectez la souris Quest dans les réglages Bluetooth de l’iPad."</string>
     <string name="start_card_4">"4. Activer le contrôle\nActivez le contrôle. Déplacez le rayon pour déplacer le pointeur de l’iPad ; la confirmation clique à sa position. Aucun calibrage nécessaire."</string>
     <string name="start_card_5">"5. Utilisation quotidienne\nMettez le contrôle en pause au besoin. Les réglages contiennent la langue, le rayon et l’assistance. Réactivez le contrôle après les réglages. Restaurer le contrôle désactive l’assistance sans recentrer le pointeur."</string>
+    <string name="show_controls">Afficher les commandes</string>
+    <string name="hide_controls">Masquer les commandes</string>
 </resources>
