@@ -14,6 +14,15 @@ See [review](verification/open-source-review.md), [security](SECURITY.md),
 OpenSSL has migrated to Apache-2.0-licensed 3.5.8; see [migration evidence](docs/OPENSSL.md).
 Public binary release still requires matching source delivery and device validation.
 
+## Real Quest capture
+
+![Actual Quest Casting view: mirrored home screen, pointer and a portion of the mouse controls](docs/images/quest-casting-mirroring-detail.png)
+
+Captured from a real Quest 3 running 0.2.29 via Meta Casting. This is a cropped
+operating-detail view, not the complete application window or a mockup. The top
+of the mirrored screen and part of the control bar are outside the capture.
+See [capture notes](docs/SCREENSHOTS.md).
+
 ## How it works
 
 ```mermaid
