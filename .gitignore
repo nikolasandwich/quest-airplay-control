@@ -29,3 +29,6 @@ __pycache__/
 *.aab
 *.log
 verification/meta-free-test-preparation.md
+
+# Source-built crypto dependency
+third_party/openssl/

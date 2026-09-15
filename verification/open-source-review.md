@@ -70,3 +70,9 @@ Post-fix verification: debug and unsigned release APK builds, debug lint and
 release lintVital passed (187 tasks; 115 executed). Unit results: {'tests': 88, 'failures': 0, 'errors': 0, 'skipped': 0}.
 Native code was compiled for arm64; JNI lifecycle change still needs a real
 reconnect/teardown smoke test before distributing the new binary.
+
+## Follow-up: OpenSSL migration
+
+The legacy OpenSSL gate described above is historical as of the source migration
+to 3.5.8. See [migration details](../docs/OPENSSL.md) and
+[migration validation](openssl-migration.md). The earlier test results are unchanged.

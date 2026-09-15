@@ -4,6 +4,12 @@
 #include <cstdint>
 #include <cstring>
 #include <mutex>
+#include <openssl/crypto.h>
+#include <openssl/opensslv.h>
+
+#if OPENSSL_VERSION_MAJOR != 3 || OPENSSL_VERSION_MINOR != 5 || OPENSSL_VERSION_PATCH != 8
+#error "Build the pinned OpenSSL 3.5.8 source using setup-openssl.sh"
+#endif
 
 #include "video_sink.h"
 #include "audio_sink.h"
@@ -151,6 +157,7 @@ Java_com_localair_airplay_nativebridge_AirPlayNative_nativeSetAudioSink(JNIEnv* 
 }
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
+    LOGI("Crypto runtime: %s", OpenSSL_version(OPENSSL_VERSION));
     localair::initJvm(vm);
     JNIEnv* env = nullptr;
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) return -1;

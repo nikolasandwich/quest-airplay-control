@@ -1,7 +1,8 @@
 # Release checklist
 
 - Preserve GPL-3.0-or-later, authorship and third-party notices.
-- Resolve legacy OpenSSL compatibility before combined binary distribution.
+- Verify the pinned OpenSSL 3 source archive and include its Apache-2.0 notice; see OPENSSL.md.
+- Run the Android crypto smoke executable and real AirPlay pairing/video/audio checks on a device.
 - Review all branches/tags and history intended for publication for private data.
 - Build in a clean directory, run unit tests and lint, record exact evidence.
 - Label Preview/Alpha; retain known limitations and do not claim instant headset-doff protection.

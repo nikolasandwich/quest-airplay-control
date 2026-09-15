@@ -12,12 +12,17 @@ if(NOT EXISTS ${RPIPLAY_LIB}/raop.c OR NOT EXISTS ${LIBPLIST_ROOT}/src/plist.c)
     message(FATAL_ERROR "Quest prototype requires real RPiPlay and libplist sources; stub builds are disabled")
 endif()
 
-#
-# OpenSSL via Google's prefab AAR (com.android.ndk.thirdparty:openssl).
-# AGP's prefab feature makes headers + per-ABI .so available under the
-# CMAKE_FIND_ROOT_PATH AGP sets up, so find_package just works.
-#
-find_package(openssl REQUIRED CONFIG)
+# OpenSSL is built from pinned official source by setup-openssl.sh.
+set(OPENSSL_ROOT ${CMAKE_SOURCE_DIR}/../../../../third_party/openssl/android-arm64)
+if(NOT EXISTS ${OPENSSL_ROOT}/lib/libcrypto.a)
+    message(FATAL_ERROR "Run setup-openssl.sh with a Linux NDK first (see docs/OPENSSL.md)")
+endif()
+add_library(openssl_crypto STATIC IMPORTED)
+set_target_properties(openssl_crypto PROPERTIES
+    IMPORTED_LOCATION ${OPENSSL_ROOT}/lib/libcrypto.a
+    INTERFACE_INCLUDE_DIRECTORIES ${OPENSSL_ROOT}/include
+    INTERFACE_LINK_LIBRARIES dl)
+add_library(openssl::crypto ALIAS openssl_crypto)
 
 #
 # libplist — compiled in-tree from third_party/libplist. We skip the C++
@@ -113,3 +118,7 @@ endif()
 find_library(log-lib log)
 find_library(android-lib android)
 target_link_libraries(airplay_native PRIVATE ${log-lib} ${android-lib} c++_shared)
+
+# Explicit opt-in executable; never packaged as an application library.
+add_executable(crypto_migration_test EXCLUDE_FROM_ALL crypto_migration_test.c)
+target_link_libraries(crypto_migration_test PRIVATE rpiplay)

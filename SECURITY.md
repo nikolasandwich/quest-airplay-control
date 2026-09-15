@@ -16,5 +16,5 @@ Physical headset removal may precede Android notifications: pause control first.
 
 Report vulnerabilities privately to nikolasandwich@gmail.com with revision and
 minimal reproduction, without credentials or private captures. No response-time
-guarantee. Legacy OpenSSL and native parsers require further review before a
-supported public binary release.
+guarantee. OpenSSL 3 and native parsers still require security updates and device validation
+before a supported public binary release.

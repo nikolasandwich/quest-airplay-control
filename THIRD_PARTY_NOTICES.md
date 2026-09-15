@@ -9,27 +9,25 @@ Original copyright and file-level notices remain authoritative.
 | playfair | bundled with pinned RPiPlay | bundled GPL license |
 | llhttp | bundled with pinned RPiPlay | MIT |
 | libplist library | 2117b8fdb6b4096455bd2041a63e59a028120136 | LGPL-2.1-or-later source headers and COPYING.LESSER |
-| OpenSSL | com.android.ndk.thirdparty:openssl:1.1.1q-beta-1 | OpenSSL License AND original SSLeay; not Apache-2.0 |
+| OpenSSL | Official OpenSSL 3.5.8 source, pinned in setup-openssl.sh | Apache-2.0; official source LICENSE.txt |
 | AndroidX, Kotlin, coroutines | Gradle declarations | retain published Apache-2.0 notices in binary release inventory |
 | C++ runtime | NDK 27.2.12479018 | retain NDK runtime notices in binary release inventory |
 
 Full native license copies are in LICENSES. Third-party sources retain their own
 notices; the project LICENSE does not replace them.
 
-## Binary release gate: legacy OpenSSL
+## OpenSSL migration
 
-Upstream's OpenSSL/Apache dual-license wording is incorrect for 1.1.1q. OpenSSL
-uses Apache-2.0 from 3.0 onwards; earlier releases use OpenSSL and SSLeay terms.
-GNU identifies the legacy license as GPL-incompatible absent suitable permission.
-This review has not established an exception covering all relevant upstream code.
+The current build uses OpenSSL 3.5.8 under Apache-2.0, compatible with GPLv3.
+The previous 1.1.1q dependency used OpenSSL AND original SSLeay terms and had an
+unresolved GPL compatibility gate. It is no longer a current build dependency;
+its license copy remains for historical versions, not as an exception or relicensing.
 
-Do not claim a compatible combined APK until a compatible crypto migration has
-been built and validated, or sufficient permission is obtained. Adding an exception
-to our own code cannot grant rights over upstream code. This is an unresolved
-distribution gate, not an assertion that upstream granted an exception.
+The library is now compiled from official source; no third-party OpenSSL AAR is used.
+See docs/OPENSSL.md for provenance, checksums, testing and remaining release work.
 
 - https://openssl-library.org/source/license/index.html
-- https://www.gnu.org/licenses/license-list.html#OpenSSL
+- https://www.apache.org/licenses/GPL-compatibility
 
 Public binaries require matching complete corresponding source, pinned dependency
 source, patches, build instructions and notices. A private repository link is not
