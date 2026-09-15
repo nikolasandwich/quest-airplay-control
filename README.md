@@ -14,6 +14,26 @@ See [review](verification/open-source-review.md), [security](SECURITY.md),
 OpenSSL has migrated to Apache-2.0-licensed 3.5.8; see [migration evidence](docs/OPENSSL.md).
 Public binary release still requires matching source delivery and device validation.
 
+## How it works
+
+```mermaid
+flowchart LR
+    Phone["iPhone / iPad"] -->|"AirPlay · picture and audio over Wi-Fi"| Quest["Quest 3 · this app"]
+    Quest -->|"Bluetooth HID · mouse input when enabled"| Phone
+```
+
+### Quick start
+
+1. Open the app on Quest 3. Put the headset and iPhone/iPad on the same Wi-Fi network.
+2. On the phone/tablet, open **Control Center → Screen Mirroring** and select the receiver shown by the Quest app.
+3. In Quest, select **Connect mouse** and grant Bluetooth access. Pair the Quest mouse from the phone/tablet's Bluetooth settings. On iPhone, first enable **Settings → Accessibility → Touch → AssistiveTouch**.
+4. Return to the mirrored view and select **Enable control**. Point at the screen to move the phone/tablet pointer; confirm to click, or use the stick to scroll.
+5. Use **Settings** for language, alignment assist and gesture strength. Pause control before removing the headset; after losing input context, enable control manually again.
+
+**Examples:** browse an iPad page on the larger screen, control an iPhone with AssistiveTouch, or hide the controls for a cleaner mirrored view. See [step-by-step examples](docs/USAGE.md).
+
+**Tested on Quest 3:** [21 device regression tests + 9 crypto checks](verification/quest-0.2.29-device-validation.md) passed for 0.2.29. A real sender streamed video successfully; the user's initial feedback was “currently feels okay.” Audio quality, extended use and reconnect scenarios are not yet fully verified.
+
 ## Historical baseline: 0.2.1
 
 - AirPlay video reception, surface lifecycle recovery, and audio decode/output path.
