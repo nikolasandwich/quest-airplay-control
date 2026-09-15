@@ -52,7 +52,10 @@ class AirPlayService : Service() {
         hid = HidController(this)
         instance = this
         startInForeground(hid.permitted())
-        try{calibrationBoard=CalibrationBoardServer(this)}catch(e:Exception){Log.w("CalibrationBoard","Board unavailable",e)}
+        // LAN diagnostics are a developer tool, not an unauthenticated release service.
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            try{calibrationBoard=CalibrationBoardServer(this)}catch(e:Exception){Log.w("CalibrationBoard","Board unavailable",e)}
+        }
         acquireMulticastLock()
         startReceiver()
         scheduleHealthCheck()

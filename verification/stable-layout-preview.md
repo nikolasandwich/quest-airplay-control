@@ -16,7 +16,7 @@
 - 本机内置浏览器1280×720，真实页面配明确测试状态：短提示变672字状态，并在同一步baseline true→false，main/header/instruction/footer/target全部坐标与尺寸不变。长详情保留672字，滚动内容高338px，容器57.59px。
 - 第10步验证提示更新，固定区域保持；最后确认隐藏目标，header172.80px/footer57.59px不变。此为页面测试，不能替代真实iPad校准全过程。
 - 用户明确“安装安装”后覆盖安装成功，保留数据；设备versionCode20、0.2.13-stable-layout-preview，lastUpdateTime2026-09-12 12:59:47。APK SHA256 b632f851e977832a3c3808f5e92657411565ebe0949a622192af1f40046af390。
-- 启动PID17476，日志底板监听http://192.168.1.214:8765/；电脑经真实LAN读取HTTP200，确认固定布局/targetReady/收藏说明代码，/state正常更新，无测试状态注入设备。初次新进程日志未见AndroidRuntime异常。
+- 启动PID17476，日志底板监听http://HEADSET_IP:8765/；电脑经真实LAN读取HTTP200，确认固定布局/targetReady/收藏说明代码，/state正常更新，无测试状态注入设备。初次新进程日志未见AndroidRuntime异常。
 - Quest UI自动化树返回null。改用设备activity布局记录，实际顶栏0,0–2240,56；视频容器0,56–2240,1064，SurfaceView2240×1008。这是实际单次几何读取，不代表已真机模拟长文或完整动态验收。随后快照activity stopped，未擅自再拉起覆盖用户当前操作。
 - 未执行Android仪器测试、自动校准、任何iPad键鼠输入。未更改配对或防火墙。
 

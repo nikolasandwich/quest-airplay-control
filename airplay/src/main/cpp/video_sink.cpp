@@ -1,3 +1,4 @@
+#include "scoped_jni_env.h"
 #include "video_sink.h"
 #include <android/log.h>
 #include <mutex>
@@ -18,15 +19,9 @@ std::mutex g_mu;
 std::vector<uint8_t> g_cachedConfig;
 int64_t g_cachedConfigPts = 0;
 
-JNIEnv* attach() {
-    JNIEnv* env = nullptr;
-    if (g_vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) return env;
-    if (g_vm->AttachCurrentThread(&env, nullptr) == JNI_OK) return env;
-    return nullptr;
-}
 
 bool isSpsOrPps(const uint8_t* data, int len) {
-    if (len < 5) return false;
+    if (!data || len < 5) return false;
     if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1) return false;
     int type = data[4] & 0x1F;
     return type == 7 || type == 8;
@@ -34,7 +29,9 @@ bool isSpsOrPps(const uint8_t* data, int len) {
 
 void sendToSink(JNIEnv* env, const uint8_t* data, int len, int64_t pts) {
     if (!g_sinkRef || !g_onNal) return;
+    if (!data || len <= 0) return;
     jbyteArray arr = env->NewByteArray(len);
+    if (!arr) { if (env->ExceptionCheck()) env->ExceptionClear(); return; }
     env->SetByteArrayRegion(arr, 0, len, reinterpret_cast<const jbyte*>(data));
     env->CallVoidMethod(g_sinkRef, g_onNal, arr, static_cast<jlong>(pts));
     if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
@@ -69,7 +66,8 @@ void dispatchSessionEnd() {
     std::lock_guard<std::mutex> lk(g_mu);
     g_cachedConfig.clear();
     if (!g_sinkRef || !g_onEnd) return;
-    JNIEnv* env = attach();
+    ScopedJniEnv scope(g_vm);
+    JNIEnv* env = scope.get();
     if (!env) return;
     env->CallVoidMethod(g_sinkRef, g_onEnd);
     if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
@@ -85,7 +83,8 @@ void dispatchNal(const uint8_t* data, int len, int64_t ptsUs) {
     }
 
     if (!g_sinkRef || !g_onNal) return;
-    JNIEnv* env = attach();
+    ScopedJniEnv scope(g_vm);
+    JNIEnv* env = scope.get();
     if (!env) return;
     sendToSink(env, data, len, ptsUs);
 }

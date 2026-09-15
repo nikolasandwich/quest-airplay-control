@@ -1,3 +1,4 @@
+#include "scoped_jni_env.h"
 #include <jni.h>
 #include <android/log.h>
 #include <cstdint>
@@ -51,9 +52,8 @@ void conn_init(void*) {
     if (!g_nativeClass || !g_onConnInit) return;
     JavaVM* vm = localair::jvm();
     if (!vm) return;
-    JNIEnv* e = nullptr;
-    if (vm->GetEnv(reinterpret_cast<void**>(&e), JNI_VERSION_1_6) != JNI_OK)
-        vm->AttachCurrentThread(&e, nullptr);
+    ScopedJniEnv scope(vm);
+    JNIEnv* e = scope.get();
     if (!e) return;
     e->CallStaticVoidMethod(g_nativeClass, g_onConnInit);
     if (e->ExceptionCheck()) { e->ExceptionDescribe(); e->ExceptionClear(); }
