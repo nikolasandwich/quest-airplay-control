@@ -14,6 +14,14 @@ See [review](verification/open-source-review.md), [security](SECURITY.md),
 OpenSSL has migrated to Apache-2.0-licensed 3.5.8; see [migration evidence](docs/OPENSSL.md).
 Public binary release still requires matching source delivery and device validation.
 
+## App pages
+
+![Code-based illustration of the mirroring page, Settings and Quick start dialog](docs/images/code-based-pages-overview-v1.png)
+
+Overview of the mirroring controls, Settings and Quick start, generated from the
+0.2.29 layout code and English strings. **This is a code-based illustration, not
+a device screenshot or a pixel-exact rendering.** See [illustration notes](docs/UI-ILLUSTRATIONS.md).
+
 ## Real Quest capture
 
 ![Actual Quest Casting view: mirrored home screen, pointer and a portion of the mouse controls](docs/images/quest-casting-mirroring-detail.png)
