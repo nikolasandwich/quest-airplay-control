@@ -10,7 +10,8 @@ import android.os.HandlerThread
 import android.util.Log
 import com.localair.airplay.nativebridge.AudioSink
 import java.nio.ByteBuffer
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Async MediaCodec AAC-ELD decoder → AudioTrack. The Mac sends 44.1kHz
@@ -28,24 +29,30 @@ class AudioDecoder : AudioSink {
     private var track: AudioTrack? = null
     private var received = 0L
     private var rendered = 0L
+    private val closed=AtomicBoolean(false)
+    private val generation=AtomicInteger(0)
+    private var appliedGeneration=0
+    private var codecGeneration=-1
+    private var retryAt=0L
+    private var pumpQueued=false
 
     private val availableInputs = java.util.ArrayDeque<Int>()
-    private val pending = ConcurrentLinkedQueue<Pair<ByteArray, Long>>()
+    private val pending = java.util.ArrayDeque<Pair<ByteArray, Long>>()
     private val codecThread = HandlerThread("AudioDecoder").apply { start() }
     private val codecHandler = Handler(codecThread.looper)
 
     private fun lazyStart() {
-        if (codec != null) return
+        if (closed.get() || appliedGeneration!=generation.get() || codec != null) return
         val fmt = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, CHANNELS).apply {
             setInteger(MediaFormat.KEY_AAC_PROFILE, AAC_OBJECT_ELD)
             setByteBuffer("csd-0", ByteBuffer.wrap(AAC_ELD_CSD0_441_STEREO))
             setInteger(MediaFormat.KEY_IS_ADTS, 0)
         }
-        codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
-            setCallback(callback, codecHandler)
-            configure(fmt, null, null, 0)
-            start()
-        }
+        val created=MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
+        codec=created;codecGeneration=appliedGeneration
+        created.setCallback(callback, codecHandler)
+        created.configure(fmt, null, null, 0)
+        created.start()
 
         val bufSize = AudioTrack.getMinBufferSize(
             SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT,
@@ -63,40 +70,67 @@ class AudioDecoder : AudioSink {
             .setBufferSizeInBytes(bufSize * 2)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
-            .apply { play() }
+        track!!.play()
 
         Log.i(TAG, "audio decoder lazy-started (AAC-ELD 44.1k stereo, async), AudioTrack buffer=${bufSize * 2}B")
     }
 
-    fun release() {
-        codecHandler.post {
-            availableInputs.clear()
-            codec?.runCatching { stop(); release() }
-            codec = null
+    private fun resetResources(){
+        check(android.os.Looper.myLooper()===codecHandler.looper)
+        val oldCodec=codec;val oldTrack=track
+        codec=null;track=null;codecGeneration=-1;availableInputs.clear()
+        oldCodec?.let {runCatching {it.stop()};runCatching {it.release()}}
+        oldTrack?.let {runCatching {it.stop()};runCatching {it.release()}}
+        received=0;rendered=0
+    }
+    fun resetSession(){
+        synchronized(pending){
+            if(closed.get())return
+            val next=generation.incrementAndGet();pending.clear()
+            codecHandler.post {if(!closed.get()){resetResources();appliedGeneration=next;retryAt=0;schedulePump()}}
         }
-        codecThread.quitSafely()
-        track?.runCatching { stop(); release() }
-        track = null
-        pending.clear()
-        received = 0; rendered = 0
+    }
+    fun release() {
+        synchronized(pending){
+            if(!closed.compareAndSet(false,true))return
+            generation.incrementAndGet();pending.clear()
+            codecHandler.post {resetResources();codecThread.quitSafely()}
+        }
+    }
+    private fun current(c:MediaCodec)=!closed.get()&&c===codec&&codecGeneration==generation.get()
+    private fun failed(c:MediaCodec?,e:Exception){
+        if(c!==codec)return
+        Log.e(TAG,"audio decoder retired; retrying on later frames",e)
+        resetResources();synchronized(pending){pending.clear()};retryAt=android.os.SystemClock.uptimeMillis()+1000
+    }
+    private fun schedulePump(){
+        synchronized(pending){
+            if(closed.get()||pumpQueued)return
+            pumpQueued=true
+            codecHandler.post {
+                synchronized(pending){pumpQueued=false}
+                if(!closed.get()&&appliedGeneration==generation.get()&&synchronized(pending){pending.isNotEmpty()}){
+                    try {if(android.os.SystemClock.uptimeMillis()>=retryAt){lazyStart();drainInputs()}}
+                    catch(e:Exception){failed(codec,e)}
+                }
+            }
+        }
     }
 
     override fun onAacFrame(data: ByteArray, ptsUs: Long) {
-        received++
-        if (received == 1L) {
-            Log.i(TAG, "first AAC frame: ${data.size}B")
-            codecHandler.post {
-                runCatching { lazyStart() }.onFailure { Log.e(TAG, "audio initialization failed", it) }
-            }
+        synchronized(pending){
+            if(closed.get())return
+            if(pending.size>=120)pending.removeFirst()
+            pending.offer(data to ptsUs)
+            schedulePump()
         }
-        pending.offer(data to ptsUs)
-        codecHandler.post { drainInputs() }
     }
 
     private fun drainInputs() {
         val c = codec ?: return
+        if(!current(c))return
         while (availableInputs.isNotEmpty()) {
-            val (frame, pts) = pending.poll() ?: return
+            val (frame, pts) = synchronized(pending){pending.poll()} ?: return
             val idx = availableInputs.removeFirst()
             try {
                 val buf = c.getInputBuffer(idx) ?: error("Missing audio buffer")
@@ -105,7 +139,7 @@ class AudioDecoder : AudioSink {
                 c.queueInputBuffer(idx, 0, frame.size, pts, 0)
             } catch (e: Exception) {
                 Log.e(TAG, "audio input failed", e)
-                availableInputs.clear()
+                failed(c,e)
                 return
             }
         }
@@ -113,12 +147,14 @@ class AudioDecoder : AudioSink {
 
     private val callback = object : MediaCodec.Callback() {
         override fun onInputBufferAvailable(c: MediaCodec, idx: Int) {
-            if (c !== codec) return
+            if (!current(c)) return
             availableInputs.addLast(idx)
             drainInputs()
         }
 
         override fun onOutputBufferAvailable(c: MediaCodec, idx: Int, info: MediaCodec.BufferInfo) {
+            if(!current(c))return
+            try {
             val outBuf = c.getOutputBuffer(idx)
             val t = track
             if (outBuf != null && info.size > 0 && t != null) {
@@ -130,14 +166,16 @@ class AudioDecoder : AudioSink {
                 if (rendered == 1L || rendered % 200 == 0L) Log.i(TAG, "played $rendered PCM chunks")
             }
             c.releaseOutputBuffer(idx, false)
+            }catch(e:Exception){failed(c,e)}
         }
 
         override fun onOutputFormatChanged(c: MediaCodec, fmt: MediaFormat) {
+            if(!current(c))return
             Log.i(TAG, "audio output format: $fmt")
         }
 
         override fun onError(c: MediaCodec, e: MediaCodec.CodecException) {
-            Log.e(TAG, "audio codec error", e)
+            if(current(c))failed(c,e)
         }
     }
 

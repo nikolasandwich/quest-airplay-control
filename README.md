@@ -2,7 +2,56 @@
 
 Quest 3 Android AirPlay receiver with service-owned BLE HID mouse controls, based on [localair](https://github.com/phoria-sam-tg/localair).
 
-## Stable version: 0.2.1
+## Current preview: 0.2.29-openssl3-preview
+
+Version code 36. Adds relative ray control, shape-and-motion tracking, four
+languages, settings, onboarding, adjustable gestures and hideable controls.
+Context loss disarms input; resume manually. Pause before removing the headset.
+Immediate physical headset-removal detection is not verified.
+
+See [review](verification/open-source-review.md), [security](SECURITY.md),
+[notices](THIRD_PARTY_NOTICES.md) and [release checklist](docs/RELEASING.md).
+OpenSSL has migrated to Apache-2.0-licensed 3.5.8; see [migration evidence](docs/OPENSSL.md).
+Public binary release still requires matching source delivery and device validation.
+
+## App pages
+
+![Code-based illustration of the mirroring page, Settings and Quick start dialog](docs/images/code-based-pages-overview-v1.png)
+
+Overview of the mirroring controls, Settings and Quick start, generated from the
+0.2.29 layout code and English strings. **This is a code-based illustration, not
+a device screenshot or a pixel-exact rendering.** See [illustration notes](docs/UI-ILLUSTRATIONS.md).
+
+## Real Quest capture
+
+![Actual Quest Casting view: mirrored home screen, pointer and a portion of the mouse controls](docs/images/quest-casting-mirroring-detail.png)
+
+Captured from a real Quest 3 running 0.2.29 via Meta Casting. This is a cropped
+operating-detail view, not the complete application window or a mockup. The top
+of the mirrored screen and part of the control bar are outside the capture.
+See [capture notes](docs/SCREENSHOTS.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+    Phone["iPhone / iPad"] -->|"AirPlay · picture and audio over Wi-Fi"| Quest["Quest 3 · this app"]
+    Quest -->|"Bluetooth HID · mouse input when enabled"| Phone
+```
+
+### Quick start
+
+1. Open the app on Quest 3. Put the headset and iPhone/iPad on the same Wi-Fi network.
+2. On the phone/tablet, open **Control Center → Screen Mirroring** and select the receiver shown by the Quest app.
+3. In Quest, select **Connect mouse** and grant Bluetooth access. Pair the Quest mouse from the phone/tablet's Bluetooth settings. On iPhone, first enable **Settings → Accessibility → Touch → AssistiveTouch**.
+4. Return to the mirrored view and select **Enable control**. Point at the screen to move the phone/tablet pointer; confirm to click, or use the stick to scroll.
+5. Use **Settings** for language, alignment assist and gesture strength. Pause control before removing the headset; after losing input context, enable control manually again.
+
+**Examples:** browse an iPad page on the larger screen, control an iPhone with AssistiveTouch, or hide the controls for a cleaner mirrored view. See [step-by-step examples](docs/USAGE.md).
+
+**Tested on Quest 3:** [21 device regression tests + 9 crypto checks](verification/quest-0.2.29-device-validation.md) passed for 0.2.29. A real sender streamed video successfully; the user's initial feedback was “currently feels okay.” Audio quality, extended use and reconnect scenarios are not yet fully verified.
+
+## Historical baseline: 0.2.1
 
 - AirPlay video reception, surface lifecycle recovery, and audio decode/output path.
 - Integrated BLE mouse connection, explicit enable/pause, progressive vertical scrolling, horizontal mouse drags, and clicks at the current iPad pointer.
@@ -19,13 +68,15 @@ Requires JDK 17, Android SDK 35, Build Tools 36.0.0, NDK 27.2.12479018, and CMak
 
 ```sh
 ./setup-deps.sh
+# On Linux/WSL, with Linux NDK r27c (see docs/OPENSSL.md):
+ANDROID_NDK_ROOT=/path/to/android-ndk-r27c bash ./setup-openssl.sh
 cp local.properties.example local.properties # edit sdk.dir for your machine
-./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
 `setup-deps.sh` pins RPiPlay and libplist to the tested revisions and idempotently applies [the native lifecycle patch](patches/RPiPlay-quest-lifecycle.patch). Existing dependencies at other revisions are left untouched and reported as an error. Dependency checkouts, local SDK paths, APKs, raw device logs, and Bluetooth preference backups are excluded from this repository.
 
-The Android package is `com.questlab.airplayreceiver`, versionCode 8. Installing or restarting it interrupts the active AirPlay session; schedule device validation with the user. The earlier standalone HID app is retained for rollback and should not run its GATT service concurrently.
+The Android package is `com.questlab.airplayreceiver`, versionCode 36. Installing or restarting it interrupts the active AirPlay session; schedule device validation with the user. The earlier standalone HID app is retained for rollback and should not run its GATT service concurrently.
 
 ## Licensing
 
@@ -38,7 +89,7 @@ Third-party components and their licenses:
 | ------------------- | ----------------- |
 | RPiPlay             | GPL-3.0           |
 | libplist            | LGPL-2.1-or-later |
-| OpenSSL (libcrypto) | OpenSSL / Apache-2.0 dual |
+| OpenSSL (libcrypto) | Apache-2.0 (OpenSSL 3.5.8; see notices) |
 
 ## Credits
 

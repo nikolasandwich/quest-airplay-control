@@ -1,3 +1,4 @@
+#include "scoped_jni_env.h"
 #include "audio_sink.h"
 #include "video_sink.h"    // for localair::jvm()
 #include <android/log.h>
@@ -10,14 +11,6 @@ jobject   g_sinkRef = nullptr;
 jmethodID g_onAac   = nullptr;
 std::mutex g_mu;
 
-JNIEnv* attach() {
-    JavaVM* vm = localair::jvm();
-    if (!vm) return nullptr;
-    JNIEnv* env = nullptr;
-    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) return env;
-    if (vm->AttachCurrentThread(&env, nullptr) == JNI_OK) return env;
-    return nullptr;
-}
 }
 
 namespace localair {
@@ -36,9 +29,12 @@ void setAudioSink(JNIEnv* env, jobject sink) {
 void dispatchAac(const uint8_t* data, int len, int64_t ptsUs) {
     std::lock_guard<std::mutex> lk(g_mu);
     if (!g_sinkRef || !g_onAac) return;
-    JNIEnv* env = attach();
+    ScopedJniEnv scope(localair::jvm());
+    JNIEnv* env = scope.get();
     if (!env) return;
+    if (!data || len <= 0) return;
     jbyteArray arr = env->NewByteArray(len);
+    if (!arr) { if (env->ExceptionCheck()) env->ExceptionClear(); return; }
     env->SetByteArrayRegion(arr, 0, len, reinterpret_cast<const jbyte*>(data));
     env->CallVoidMethod(g_sinkRef, g_onAac, arr, static_cast<jlong>(ptsUs));
     if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }

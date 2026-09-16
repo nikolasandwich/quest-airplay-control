@@ -1,8 +1,15 @@
+#include "scoped_jni_env.h"
 #include <jni.h>
 #include <android/log.h>
 #include <cstdint>
 #include <cstring>
 #include <mutex>
+#include <openssl/crypto.h>
+#include <openssl/opensslv.h>
+
+#if OPENSSL_VERSION_MAJOR != 3 || OPENSSL_VERSION_MINOR != 5 || OPENSSL_VERSION_PATCH != 8
+#error "Build the pinned OpenSSL 3.5.8 source using setup-openssl.sh"
+#endif
 
 #include "video_sink.h"
 #include "audio_sink.h"
@@ -51,9 +58,8 @@ void conn_init(void*) {
     if (!g_nativeClass || !g_onConnInit) return;
     JavaVM* vm = localair::jvm();
     if (!vm) return;
-    JNIEnv* e = nullptr;
-    if (vm->GetEnv(reinterpret_cast<void**>(&e), JNI_VERSION_1_6) != JNI_OK)
-        vm->AttachCurrentThread(&e, nullptr);
+    ScopedJniEnv scope(vm);
+    JNIEnv* e = scope.get();
     if (!e) return;
     e->CallStaticVoidMethod(g_nativeClass, g_onConnInit);
     if (e->ExceptionCheck()) { e->ExceptionDescribe(); e->ExceptionClear(); }
@@ -91,7 +97,7 @@ Java_com_localair_airplay_nativebridge_AirPlayNative_nativeStart(JNIEnv* env, jc
     g_raop = raop_init(10, &cbs);
     if (!g_raop) { LOGE("raop_init failed"); return 0; }
     raop_set_log_callback(g_raop, log_callback, nullptr);
-    raop_set_log_level(g_raop, RAOP_LOG_DEBUG);
+    raop_set_log_level(g_raop, RAOP_LOG_INFO);
 
     // dnssd_stub.c implements this API as a no-op store for name + hw_addr.
     // Kotlin (NsdManager) handles actual Bonjour advertising.
@@ -151,6 +157,7 @@ Java_com_localair_airplay_nativebridge_AirPlayNative_nativeSetAudioSink(JNIEnv* 
 }
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
+    LOGI("Crypto runtime: %s", OpenSSL_version(OPENSSL_VERSION));
     localair::initJvm(vm);
     JNIEnv* env = nullptr;
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) return -1;

@@ -1,0 +1,8 @@
+# Input context protection 0.2.27
+
+HID context supplier defaults closed and belongs to UI owner. Activity requires resumed state, foreground focus, no settings/PiP, valid video Surface with current-owner frames, interactive power and display ON. Checks at arming, pointer tracking, scroll events, button actions and final non-neutral transmission. Polling every 100ms while resumed revokes armed state even without input; frame notifications also revoke. Lifecycle pause disarms immediately. Returning context does not rearm. Bluetooth connection retained. Release-only neutral packets remain allowed; already submitted reports cannot be recalled.
+
+83 tests passed including loss of context, denied mouse actions and no automatic rearm. APK and lint passed. Not installed. Physical headset-removal timing is NOT verified: Android 2D focus/pause and screen-off can lag actual removal. No direct proximity sensor surfaced in the inspected sensor listing. This change must not be described as proven immediate headset-doff detection. Until validated, Pause control before removing headset remains the reliable explicit action.
+
+Meta reference: https://developers.meta.com/horizon/documentation/unity/unity-lifecycle/ describes pause timing after unmount and auto-sleep. Spatial SDK onHMDUnmounted belongs to Spatial activity integration, not automatically available on the current plain 2D Activity: https://developers.meta.com/horizon/documentation/spatial-sdk/spatial-sdk-activity-lifecycle/
+Installed by user request on 2026-09-12 19:57:50; code 34 verified, launched PID 21529. No automatic pointer or headset-removal test performed. Combined multi-candidate motion tracker remains discussion only.

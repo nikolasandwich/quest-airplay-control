@@ -18,6 +18,7 @@ import com.localair.airplay.nativebridge.AirPlayNative
 
 class AirPlayService : Service() {
     lateinit var hid: HidController; private set
+    var calibrationBoard: CalibrationBoardServer? = null; private set
 
     private var multicastLock: WifiManager.MulticastLock? = null
     private lateinit var mdns: MdnsAdvertiser
@@ -47,9 +48,14 @@ class AirPlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        AppText.initialize(this)
         hid = HidController(this)
         instance = this
         startInForeground(hid.permitted())
+        // LAN diagnostics are a developer tool, not an unauthenticated release service.
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            try{calibrationBoard=CalibrationBoardServer(this)}catch(e:Exception){Log.w("CalibrationBoard","Board unavailable",e)}
+        }
         acquireMulticastLock()
         startReceiver()
         scheduleHealthCheck()
@@ -59,7 +65,8 @@ class AirPlayService : Service() {
     override fun onDestroy() {
         instance = null
         handler.removeCallbacksAndMessages(null)
-        hid.stop()
+        hid.close()
+        calibrationBoard?.close()
         if (::mdns.isInitialized) mdns.unregister()
         AirPlayNative.setVideoSink(null)
         AirPlayNative.setAudioSink(null)
@@ -101,7 +108,7 @@ class AirPlayService : Service() {
                     Log.w(TAG, "raop died — restarting receiver")
                     AirPlayNative.stop()
                     if (::mdns.isInitialized) mdns.unregister()
-                    audio.release()
+                    audio.resetSession()
                     startReceiver()
                 }
                 handler.postDelayed(this, HEALTH_INTERVAL_MS)
@@ -117,6 +124,17 @@ class AirPlayService : Service() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refreshLanguage()
+    }
+
+    fun refreshLanguage(){
+        AppText.initialize(this)
+        hid.refreshLanguage()
+        startInForeground(hid.permitted())
+    }
+
     private fun startInForeground(withHid: Boolean = false) {
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -126,8 +144,8 @@ class AirPlayService : Service() {
         }
         val name = DeviceIdentity.deviceName(this)
         val n: Notification = Notification.Builder(this, CHANNEL)
-            .setContentTitle("Quest 投屏与鼠标")
-            .setContentText("$name · 接收服务运行中")
+            .setContentTitle(AppText.get(R.string.quest_mirror_mouse))
+            .setContentText(AppText.get(R.string.receiver_running,name))
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

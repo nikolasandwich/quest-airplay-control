@@ -14,18 +14,37 @@ import java.util.*;
 /** Service-owned BLE HID. All state and GATT callbacks run on the main looper.
  * GATT layout and report map retain the validated HID 0.1.12 schema. */
 @android.annotation.SuppressLint("MissingPermission")
-public final class HidController extends ContextWrapper {
+public final class HidController extends ContextWrapper implements RayInputTransport {
     private int generation;
     private boolean focused;
     private boolean needsReconnect;
     private Object uiOwner;
     private Runnable listener;
-    private String lastStatus="鼠标未连接";
+    private java.util.function.BooleanSupplier inputContext=()->false;
+    public void setInputContext(Object owner,java.util.function.BooleanSupplier context){
+        if(uiOwner==owner){inputContext=context;checkInputContext();}
+    }
+    private boolean checkInputContext(){
+        boolean allowed=inputContext.getAsBoolean();
+        if(!allowed&&armed)disarm();
+        return allowed;
+    }
+    private String lastStatus=AppText.get(R.string.mouse_disconnected);
+    private final AsyncDiagnosticLog diagnostics;
+    private double dragGain=1, scrollGain=1;
+    public void refreshMotionPreferences(){
+        android.content.SharedPreferences prefs=getSharedPreferences("pointer_ui",MODE_PRIVATE);
+        dragGain=Math.max(25,Math.min(200,prefs.getInt("drag_percent",100)))/100.0;
+        double gain=Math.max(25,Math.min(200,prefs.getInt("scroll_percent",100)))/100.0;
+        if(gain!=scrollGain){scrollGain=gain;mappedScroll.configure(false,gain,6);}
+    }
     public HidController(Context context) {
         super(context);
+        diagnostics=new AsyncDiagnosticLog(new java.io.File(getFilesDir(),"hid-diagnostic.log"),message -> Log.w("QuestHidLab",message));
         BluetoothManager manager=getSystemService(BluetoothManager.class);
         adapter=manager==null?null:manager.getAdapter();
         mappedScroll.configure(false,1,6);
+        refreshMotionPreferences();
     }
     public void attachUi(Object owner, Runnable changed) {
         if(uiOwner!=owner){disarm();uiOwner=owner;}
@@ -34,6 +53,7 @@ public final class HidController extends ContextWrapper {
     }
     public void detachUi(Object owner) {
         if(uiOwner!=owner)return;
+        inputContext=()->false;
         disarm();focused=false;listener=null;uiOwner=null;
     }
     public void setFocused(Object owner, boolean value) {
@@ -46,37 +66,55 @@ public final class HidController extends ContextWrapper {
     }
     public void toggleArmed() {
         if(armed){disarm();return;}
+        if(!checkInputContext()){note(AppText.get(R.string.waiting_for_mirroring));return;}
         if(releaseUnconfirmed||needsReconnect||!focused||!serviceReady||host==null||!subscribed||suspended||protocolMode!=1||host.getBondState()!=BluetoothDevice.BOND_BONDED) {
-            note("请先连接已配对的 iPad，并保持投屏页在前台");return;
+            note(AppText.get(R.string.connect_the_paired_ipad_and_keep_the));return;
         }
-        armed=true;note("鼠标控制已启用：指向投屏画面，拨动摇杆滚动");
+        armed=true;note(AppText.get(R.string.mouse_control_enabled_point_at_the_mirrored));
     }
     public boolean isArmed(){return armed;}
+    public void refreshLanguage(){lastStatus=AppText.get(R.string.mouse_disconnected);changed();}
+    public boolean canMovePointer(){
+        return canTrackPointer()&&!notificationPending;
+    }
+    /** A busy notification is transient; all other input gates revoke accumulated motion. */
+    public boolean canTrackPointer(){
+        if(!checkInputContext())return false;
+        return armed&&focused&&!needsReconnect&&!releaseUnconfirmed&&serviceReady&&server!=null&&host!=null&&subscribed&&!suspended&&protocolMode==1&&gestureRemaining==0&&!pointerAction.active()&&host.getBondState()==BluetoothDevice.BOND_BONDED;
+    }
+    /** Only a foreground video ray event may request bounded relative movement. */
+    public boolean movePointer(int x,int y){
+        return movePointer(x,y,null);
+    }
+    public interface ReportCompletion { void complete(boolean success); }
+    public boolean movePointer(int x,int y,ReportCompletion completion){
+        if(!canMovePointer()||Math.abs((long)x)>32||Math.abs((long)y)>32)return false;
+        if(x==0&&y==0)return true;
+        return transmit(0,x,y,0,null,completion);
+    }
     public boolean isStarted(){return server!=null;}
     public String statusText(){
-        if(releaseUnconfirmed)return "鼠标松开未确认 · 请重连原 Quest 蓝牙设备";
-        if(needsReconnect)return "请在 iPad 蓝牙中断开并重连原 Quest 设备一次";
-        if(armed)return "上下滚动 · 左右拖拽 · 点击作用于 iPad 当前指针";
-        if(host!=null&&subscribed)return "鼠标已连接 · 点击启用控制";
-        if(host!=null)return "蓝牙已连接 · 等待鼠标订阅";
-        if(advertising)return "请在 iPad 蓝牙中连接原 Quest 设备";
+        if(releaseUnconfirmed)return AppText.get(R.string.mouse_release_unconfirmed_reconnect_the_original_quest);
+        if(needsReconnect)return AppText.get(R.string.disconnect_and_reconnect_the_original_quest_device);
+        if(armed)return AppText.get(R.string.scroll_up_down_drag_left_right_click);
+        if(host!=null&&subscribed)return AppText.get(R.string.mouse_connected_enable_control_to_start);
+        if(host!=null)return AppText.get(R.string.bluetooth_connected_waiting_for_mouse_subscription);
+        if(advertising)return AppText.get(R.string.connect_the_original_quest_device_in_ipad);
         return lastStatus;
     }
     private void changed(){if(listener!=null)listener.run();}
-    private synchronized void note(String text) {
+    private void note(String text) {
         Log.i("QuestHidLab",text);
-        lastStatus=text;
-        try {
-            java.io.File log=new java.io.File(getFilesDir(),"hid-diagnostic.log");
-            if(log.length()>262144){java.io.File old=new java.io.File(getFilesDir(),"hid-diagnostic.previous.log");java.nio.file.Files.move(log.toPath(),old.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);}
-            try(java.io.FileWriter writer=new java.io.FileWriter(log,true)){writer.write(System.currentTimeMillis()+" "+text+"\n");}
-        }catch(java.io.IOException e){Log.w("QuestHidLab","Diagnostic file unavailable");}
-        handler.post(this::changed);
+        diagnostics.append(System.currentTimeMillis()+" "+text);
+        boolean sample=text.startsWith("mode=")||text.startsWith("notification complete=")||text.startsWith("SCROLL source=")||text.startsWith("GATT read")||text.startsWith("GATT descriptor read");
+        if(!sample){lastStatus=text;handler.removeCallbacks(statusChanged);handler.post(statusChanged);}
     }
+    private final Runnable statusChanged=this::changed;
     public boolean permitted() {
         return Build.VERSION.SDK_INT<31 || (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)==PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)==PackageManager.PERMISSION_GRANTED);
     }
     public boolean onMotion(MotionEvent event) {
+        if(!checkInputContext())return false;
         if(event.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT){mappedScroll.stop();horizontalGate.reset();cancelPointerAction();}
         if(event.getActionMasked()!=MotionEvent.ACTION_SCROLL)return false;
         float h=event.getAxisValue(MotionEvent.AXIS_HSCROLL),v=event.getAxisValue(MotionEvent.AXIS_VSCROLL);
@@ -124,6 +162,9 @@ public final class HidController extends ContextWrapper {
     private int pointerEpoch, releaseAttempts;
     private boolean releaseUnconfirmed;
     private static final class PendingReport {
+        final ReportDeadline deadline=new ReportDeadline(SystemClock.uptimeMillis());
+        Runnable timeout;
+        ReportCompletion completion;
         final PointerAction.Packet pointer;
         PendingReport(PointerAction.Packet pointer){this.pointer=pointer;}
     }
@@ -132,8 +173,9 @@ public final class HidController extends ContextWrapper {
     public void clickPointer(){startPointerAction(0);}
     public void dragPointer(int direction){if(direction==1||direction==-1)startPointerAction(direction);}
     private void startPointerAction(int direction){
+        if(!checkInputContext())return;
         if(!armed||!focused||needsReconnect||releaseUnconfirmed||!serviceReady||server==null||host==null||!subscribed||suspended||protocolMode!=1||notificationPending||gestureRemaining!=0||host.getBondState()!=BluetoothDevice.BOND_BONDED)return;
-        if(!pointerAction.start(direction))return;
+        if(!pointerAction.start(direction,dragGain))return;
         mappedScroll.stop();pointerHost=host;pointerEpoch=generation;releaseAttempts=0;
         note(direction==0?"User action: left click at current iPad pointer":"User action: mouse drag direction="+direction+"; not a touch digitizer");
         handler.postDelayed(pointerTimeout,650);
@@ -147,6 +189,7 @@ public final class HidController extends ContextWrapper {
     }
     private final Runnable pointerPump=new Runnable(){public void run(){
         if(!pointerAction.active()||releaseUnconfirmed)return;
+        checkInputContext();
         if(!pointerLinkValid()){pointerAction.disconnected();pointerHost=null;return;}
         if(!armed||!focused||suspended)pointerAction.cancel();
         if(notificationPending)return;
@@ -168,7 +211,9 @@ public final class HidController extends ContextWrapper {
     }};
     private void resetPointerLink(){
         handler.removeCallbacks(pointerPump);handler.removeCallbacks(pointerTimeout);
-        pointerAction.disconnected();pointerHost=null;pendingReports.clear();notificationPending=false;releaseUnconfirmed=false;
+        pointerAction.disconnected();pointerHost=null;
+        for(PendingReport p:pendingReports){if(p.timeout!=null)handler.removeCallbacks(p.timeout);p.deadline.acknowledge();if(p.completion!=null)p.completion.complete(false);}
+        pendingReports.clear();notificationPending=false;releaseUnconfirmed=false;
         values.put(uuid(0x2a4d),new byte[4]);values.put(uuid(0x2a33),new byte[3]);horizontalGate.reset();
     }
     private void failPointerRelease(){
@@ -182,12 +227,13 @@ public final class HidController extends ContextWrapper {
     private int gestureRemaining;
     private int gestureSteps;
     private int gestureDirection;
+    private int gestureWheel=10;
     private final Runnable gestureStep=new Runnable(){
         @Override public void run(){
             if(gestureRemaining<=0)return;
             if(!focused||!serviceReady||!armed||!subscribed||suspended||protocolMode!=1||host==null||!host.equals(gestureHost)||host.getBondState()!=BluetoothDevice.BOND_BONDED){cancelGesture();return;}
             gestureRemaining--;
-            send(0,0,0,gestureDirection*10);
+            send(0,0,0,gestureDirection*gestureWheel);
             if(gestureHost==null)return;
             if(gestureRemaining>0)handler.postDelayed(this,60);
             else {gestureHost=null;note("Short scroll gesture complete: "+gestureSteps+" reports requested; app effect requires observation");}
@@ -197,13 +243,15 @@ public final class HidController extends ContextWrapper {
         handler.removeCallbacks(gestureStep);gestureRemaining=0;gestureHost=null;
     }
     public void scrollPage(int direction){
+        if(!checkInputContext())return;
         if(gestureRemaining>0||pointerAction.active()||releaseUnconfirmed)return;
         int steps=6;
         if(!focused || (direction!=1 && direction!=-1))return;
         gestureDirection=direction;
+        gestureWheel=(int)Math.round(10*scrollGain);
         if(!focused||!serviceReady||!armed||!subscribed||suspended||protocolMode!=1||host==null||host.getBondState()!=BluetoothDevice.BOND_BONDED){note("Gesture unavailable: enable controls on connected REPORT host");return;}
         gestureHost=host;gestureRemaining=steps;gestureSteps=steps;
-        note("Short scroll gesture started: "+steps+" x wheel "+(gestureDirection*10)+" at 60ms; no automatic repeat");
+        note("Short scroll gesture started: "+steps+" x wheel "+(gestureDirection*gestureWheel)+" at 60ms; no automatic repeat");
         handler.post(gestureStep);
     }
 
@@ -232,10 +280,11 @@ public final class HidController extends ContextWrapper {
         serviceReady=true;
         note("HID, Battery and Device Information services ready");
         if(host!=null){
-            needsReconnect=true;
-            disarm();
-            note("Link predates service registration: reconnecting HID once; pairing retained");
-            server.cancelConnection(host);
+            // Bonded hosts may reconnect while addService callbacks are still pending.
+            // A connected transport is not a reason to tear it down: input remains gated
+            // by serviceReady, the current-schema CCCD, bond state and explicit arming.
+            note("Early host retained after service registration; subscribed="+subscribed+" armed="+armed);
+            changed();
             return;
         }
         restartAdvertising();
@@ -243,7 +292,11 @@ public final class HidController extends ContextWrapper {
     }
     public void start() {
         if(!permitted()){note("Bluetooth permission required");return;}
-        if(server!=null){note("Already started");return;}
+        if(server!=null){
+            if(serviceReady&&host==null)restartAdvertising();
+            else note("Mouse service state: ready="+serviceReady+" host="+(host!=null)+" subscribed="+subscribed+" suspended="+suspended+" protocol="+protocolMode+" focused="+focused+" armed="+armed+" reconnect="+needsReconnect);
+            changed();return;
+        }
         if(adapter==null||!adapter.isEnabled()||adapter.getBluetoothLeAdvertiser()==null){note("BLE peripheral unavailable");return;}
         try {
             server=getSystemService(BluetoothManager.class).openGattServer(this,createCallback(++generation));
@@ -273,7 +326,7 @@ public final class HidController extends ContextWrapper {
             // 0xffff, local product 1, version 0x0018. Not a shipping vendor ID.
             device.addCharacteristic(characteristic(0x2a50,2,1,new byte[]{1,(byte)0xff,(byte)0xff,1,0,0x18,0}));
             device.addCharacteristic(characteristic(0x2a24,2,1,"Quest HID Lab prototype".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-            device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.1".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.8-align-preview".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             pendingServices.clear();
             pendingServices.add(service);pendingServices.add(battery);pendingServices.add(device);
             addNextService();
@@ -384,6 +437,9 @@ public final class HidController extends ContextWrapper {
         @Override public void onNotificationSent(BluetoothDevice d,int code){ handler.post(() -> { if(epoch!=generation || server==null || !d.equals(host))return;
             PendingReport completedReport=pendingReports.poll();notificationPending=!pendingReports.isEmpty();
             if(completedReport==null)return;
+            handler.removeCallbacks(completedReport.timeout);
+            if(!completedReport.deadline.acknowledge())return;
+            if(completedReport.completion!=null)completedReport.completion.complete(code==0);
             completed++;note("notification complete="+completed+" status="+code);
             if(completedReport.pointer!=null){
                 pointerAction.acknowledged(completedReport.pointer,code==0);
@@ -394,12 +450,29 @@ public final class HidController extends ContextWrapper {
         }); }
     }; }
     private void send(int buttons,int x,int y,int wheel){
+        if(!checkInputContext())return;
         BluetoothDevice peer=host;BluetoothGattServer gatt=server;boolean boot=protocolMode==0;
         if(pointerAction.active()||releaseUnconfirmed||!focused||!serviceReady||!armed||notificationPending||!(boot?bootSubscribed:subscribed)||peer==null||gatt==null||suspended||peer.getBondState()!=BluetoothDevice.BOND_BONDED){note("No report: require ready service, bonded host, current-schema subscription, not suspended, and armed controls");return;}
         if(boot&&wheel!=0){note("No wheel: host selected BOOT mouse mode (buttons and X/Y only)");return;}
         transmit(buttons,x,y,wheel,null);
     }
     private boolean transmit(int buttons,int x,int y,int wheel,PointerAction.Packet pointer){
+        return transmit(buttons,x,y,wheel,pointer,null);
+    }
+    private void armReportDeadline(PendingReport queued,int submittedGeneration){
+        queued.timeout=() -> {
+            if(generation!=submittedGeneration||!pendingReports.contains(queued)||!queued.deadline.expire(SystemClock.uptimeMillis()))return;
+            // Retire the server generation: late ACKs cannot name their original report.
+            stop();needsReconnect=true;
+            note(AppText.get(R.string.mouse_confirmation_timed_out_connection_stopped_reconnect));
+            final int retiredGeneration=generation;
+            handler.postDelayed(() -> {if(generation==retiredGeneration&&server==null&&permitted())start();},1000);
+        };
+        handler.postDelayed(queued.timeout,1000);
+    }
+    private boolean transmit(int buttons,int x,int y,int wheel,PointerAction.Packet pointer,ReportCompletion completion){
+        // Release-only reports may finish a held button after context is revoked.
+        if((buttons!=0||x!=0||y!=0||wheel!=0)&&!checkInputContext())return false;
         BluetoothDevice peer=host;BluetoothGattServer gatt=server;boolean boot=protocolMode==0;
         if(peer==null||gatt==null||!permitted())return false;
         if(pointer!=null && buttons==0)releaseAttempts++;
@@ -409,12 +482,14 @@ public final class HidController extends ContextWrapper {
         values.put(uuid(0x2a4d),new byte[]{(byte)buttons,0,0,0});
         values.put(uuid(0x2a33),new byte[]{(byte)buttons,0,0});
         PendingReport queued=new PendingReport(pointer);pendingReports.add(queued);notificationPending=true;
+        queued.completion=completion;
         boolean accepted=false;
         try {
             if(Build.VERSION.SDK_INT>=33){int code=gatt.notifyCharacteristicChanged(peer,input,false,data);accepted=code==0;note("mode="+(boot?"BOOT":"REPORT")+" bytes="+data.length+" buttons="+buttons+" x="+x+" y="+y+" wheel="+wheel+" send="+(++sent)+" status="+code);}
             else {input.setValue(data);accepted=gatt.notifyCharacteristicChanged(peer,input,false);note("send="+(++sent)+" accepted="+accepted);}
         }catch(RuntimeException e){Log.w("QuestHidLab","Report submission failed",e);}
-        if(!accepted){pendingReports.remove(queued);notificationPending=!pendingReports.isEmpty();cancelGesture();mappedScroll.stop();}
+        if(!accepted){queued.deadline.acknowledge();pendingReports.remove(queued);notificationPending=!pendingReports.isEmpty();cancelGesture();mappedScroll.stop();}
+        else armReportDeadline(queued,generation);
         return accepted;
     }
     public void stop(){
@@ -433,4 +508,5 @@ public final class HidController extends ContextWrapper {
         if(adapter!=null&&permitted()&&adapter.getBluetoothLeAdvertiser()!=null)adapter.getBluetoothLeAdvertiser().stopAdvertising(advertiseCallback);
         if(server!=null){server.close();server=null;}host=null;advertising=false;note("BLE experiment stopped");
     }
+    public void close(){stop();handler.removeCallbacksAndMessages(null);diagnostics.close();}
 }

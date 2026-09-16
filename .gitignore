@@ -14,3 +14,21 @@ third_party/libplist/
 .DS_Store
 *.swp
 verification/*.generated.c
+__pycache__/
+
+# Private publication and build material
+.kotlin/
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.dpapi
+.env
+.env.*
+*.apk
+*.aab
+*.log
+verification/meta-free-test-preparation.md
+
+# Source-built crypto dependency
+third_party/openssl/

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quest Mouse Control</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#f2f2f2;color:#333;font-family:system-ui,sans-serif}
+main{position:fixed;inset:0}header{position:absolute;left:8%;right:8%;top:5%;height:25%;overflow:auto;text-align:center}
+h1{font-size:clamp(20px,3vw,36px);margin:0 0 16px}p{font-size:clamp(16px,2vw,24px);line-height:1.5;margin:0}
+footer{position:absolute;left:8%;right:8%;bottom:5%;height:15%;overflow:auto;text-align:center;font-size:clamp(14px,1.8vw,22px)}
+</style></head><body><main>
+<header><h1 id="heading">Direct control, no targets to follow</h1><p id="instructions">Return to your iPad app and move the ray to control the mouse. Use Restore control on Quest if needed.</p></header>
+<footer><p id="connection">Connecting to headset status…</p><p id="detail">You can close this page. Restore control does not center the actual pointer.</p></footer>
+</main><script>
+const connection=document.getElementById('connection');
+const messages={
+ en:{title:'Quest Mouse Control',heading:'Direct control, no targets to follow',instructions:'Return to your iPad app and move the ray to control the mouse. Use Restore control on Quest if needed.',detail:'You can close this page. Restore control does not center the actual pointer.',connecting:'Connecting to headset status…',stale:'Headset status unavailable; this page does not guide mouse actions.',ready:'Headset service reachable · No calibration needed here'},
+ 'zh-CN':{title:'Quest 鼠标控制',heading:'直接控制，无需追圈',instructions:'回到想用的 iPad 应用，移动射线控制鼠标。需要恢复时，在 Quest 点“恢复控制”。',detail:'此页无需保持打开；恢复控制不会自动把真实指针移到中央。',connecting:'正在连接头显状态…',stale:'头显状态暂不可用；此页不引导鼠标动作。',ready:'头显服务可达 · 无需在此页校准'},
+ de:{title:'Quest Maussteuerung',heading:'Direkte Steuerung ohne Zielverfolgung',instructions:'Zur iPad-App zurückkehren und den Strahl bewegen, um die Maus zu steuern. Bei Bedarf auf Quest Zurücksetzen wählen.',detail:'Diese Seite kann geschlossen werden. Zurücksetzen zentriert den echten Zeiger nicht.',connecting:'Verbindung zum Headset-Status…',stale:'Headset-Status nicht verfügbar; diese Seite steuert keine Mausaktionen.',ready:'Headset-Dienst erreichbar · Keine Kalibrierung nötig'},
+ fr:{title:'Commande de souris Quest',heading:'Commande directe, sans cible à suivre',instructions:'Revenez à votre application iPad et déplacez le rayon pour contrôler la souris. Si nécessaire, choisissez Rétablir commande sur Quest.',detail:'Vous pouvez fermer cette page. Rétablir commande ne centre pas le pointeur réel.',connecting:'Connexion à l’état du casque…',stale:'État du casque indisponible ; cette page ne guide pas la souris.',ready:'Service du casque accessible · Aucun étalonnage nécessaire'}
+};
+let language='en';
+function setLanguage(tag){
+ const normalized=String(tag||'en').toLowerCase();
+ language=/^zh-(cn|sg|hans)(-|$)/.test(normalized)||normalized==='zh'?'zh-CN':normalized.split('-')[0];
+ if(!messages[language])language='en';
+ const m=messages[language];document.documentElement.lang=language;document.title=m.title;
+ for(const key of ['heading','instructions','detail'])document.getElementById(key).textContent=m[key];
+}
+setLanguage(typeof navigator==='undefined'?'en':navigator.language);
+connection.textContent=messages[language].connecting;
+let lastSuccess=-Infinity;
+function stale(){if(Date.now()-lastSuccess>2500)connection.textContent=messages[language].stale;}
+setInterval(stale,250);
+async function poll(){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),1500);
+  try{
+    const response=await fetch('/state',{cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw Error('unavailable');const state=await response.json();
+    if(state.language)setLanguage(state.language);
+    lastSuccess=Date.now();connection.textContent=messages[language].ready;
+  }catch(e){stale();}finally{clearTimeout(timer);setTimeout(poll,500);}
+}
+poll();
+</script></body></html>

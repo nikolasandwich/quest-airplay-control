@@ -29,7 +29,6 @@ android {
         }
     }
 
-    buildFeatures { prefab = true }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -40,5 +39,4 @@ android {
 
 dependencies {
     implementation(libs.kotlinx.coroutines.android)
-    implementation("com.android.ndk.thirdparty:openssl:1.1.1q-beta-1")
 }

@@ -11,18 +11,24 @@ public final class PointerAction {
     private enum Phase { IDLE, PRESS, MOVE, RELEASE }
     private Phase phase=Phase.IDLE;
     private int direction, remaining;
+    private int distance=24;
     private long action;
     private boolean pressAttempted;
     public boolean active(){return phase!=Phase.IDLE;}
     public boolean releasing(){return phase==Phase.RELEASE;}
     public boolean start(int direction){
+        return start(direction,1);
+    }
+    public boolean start(int direction,double gain){
+        if(!Double.isFinite(gain)||gain<.25||gain>2)throw new IllegalArgumentException();
         if(active()||direction < -1||direction > 1)return false;
+        distance=(int)Math.round(24*gain);
         this.direction=direction;remaining=direction==0?0:10;
         action++;pressAttempted=false;phase=Phase.PRESS;return true;
     }
     public Packet next(){
         if(phase==Phase.IDLE)return null;
-        return new Packet(phase==Phase.RELEASE?0:1,phase==Phase.MOVE?direction*24:0,action);
+        return new Packet(phase==Phase.RELEASE?0:1,phase==Phase.MOVE?direction*distance:0,action);
     }
     public void attempted(Packet packet){if(packet.action==action&&packet.buttons!=0)pressAttempted=true;}
     public void cancel(){if(active())phase=pressAttempted?Phase.RELEASE:Phase.IDLE;}

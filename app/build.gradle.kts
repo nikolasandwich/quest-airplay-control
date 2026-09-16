@@ -3,7 +3,18 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+val packageLicenseNotices by tasks.registering(Copy::class) {
+    from(rootProject.file("LICENSES"))
+    from(rootProject.file("LICENSE"))
+    from(rootProject.file("COPYRIGHT"))
+    from(rootProject.file("THIRD_PARTY_NOTICES.md"))
+    into(layout.buildDirectory.dir("generated/licenseAssets/licenses"))
+}
+
+tasks.named("preBuild").configure { dependsOn(packageLicenseNotices) }
+
 android {
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/licenseAssets"))
     namespace = "com.localair.airplay"
     compileSdk = 35
     ndkVersion = "27.2.12479018"
@@ -13,8 +24,8 @@ android {
         applicationId = "com.questlab.airplayreceiver"
         minSdk = 28
         targetSdk = 34
-        versionCode = 8
-        versionName = "0.2.1"
+        versionCode = 36
+        versionName = "0.2.29-openssl3-preview"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -31,9 +42,12 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { viewBinding = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("junit:junit:4.13.2")
     implementation(project(":airplay"))

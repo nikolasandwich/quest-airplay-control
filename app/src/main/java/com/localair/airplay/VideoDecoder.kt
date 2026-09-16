@@ -3,6 +3,7 @@ package com.localair.airplay
 import android.media.MediaCodec
 import android.media.MediaFormat
 import android.graphics.Bitmap
+import android.graphics.SurfaceTexture
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
@@ -38,9 +39,19 @@ class VideoDecoder(
     private var pixelCheckPending = false
     private var lastPixelCheck = 0L
     private var frameCallbacks = 0L
+    private var parkingTexture: SurfaceTexture? = null
+    private var parkingSurface: Surface? = null
+    private var lastKeyframeWaitLog = 0L
     private var sps: ByteArray? = null
     private var pps: ByteArray? = null
     @Volatile var hasFrames = false; private set
+    @Volatile private var confirmedSurfaceOwner: Any? = null
+    @Volatile private var lastOutputSubmittedAt = -1L
+    fun hasFramesFor(owner: Any?) = owner != null && confirmedSurfaceOwner === owner && hasFrames
+    fun displayDiagnostic(owner:Any?)="owner=${System.identityHashCode(owner)} requested=${System.identityHashCode(requestedTarget.get()?.owner)} confirmed=${System.identityHashCode(confirmedSurfaceOwner)} frames=$hasFrames fed=$fed rendered=$rendered"
+    // Liveness gate only; a submission timestamp is not proof of visible content.
+    fun hasRecentOutputFor(owner: Any?) = hasFramesFor(owner) &&
+        lastOutputSubmittedAt >= 0 && SystemClock.uptimeMillis()-lastOutputSubmittedAt in 0..500
     @Volatile private var rendered = 0L
     @Volatile private var fed = 0L
 
@@ -86,10 +97,45 @@ class VideoDecoder(
             frameTargets.clear()
             Log.i(TAG, "surface detached; decoder retained fed=$fed rendered=$rendered")
             setHasFrames(false)
+            parkCodecOutput()
         }
     }
 
+    /** Called from Activity.onPause, before Android destroys the window producer.
+     * Decode reference pictures continue, but no frames are rendered while parked. */
+    fun parkBeforeWindowStops(owner: Any) {
+        if (closed.get()) return
+        val old = requestedTarget.get() ?: return
+        if (old.owner !== owner || !requestedTarget.compareAndSet(old,null)) return
+        val done = java.util.concurrent.CountDownLatch(1)
+        codecHandler.post {
+            try {
+                if (target === old) {
+                    target = null; frameTargets.clear(); setHasFrames(false)
+                    parkCodecOutput()
+                }
+            } finally { done.countDown() }
+        }
+        // A bounded barrier lets the codec leave the Activity surface before onStop.
+        try {
+            if (!done.await(500,java.util.concurrent.TimeUnit.MILLISECONDS)) Log.w(TAG,"parking barrier timed out")
+        } catch (_: InterruptedException) { Thread.currentThread().interrupt(); Log.w(TAG,"parking barrier interrupted") }
+    }
+
+    private fun parkCodecOutput() {
+        val c = codec ?: return
+        try {
+            if (parkingSurface == null) {
+                parkingTexture = SurfaceTexture(false).apply { setDefaultBufferSize(1920,1080) }
+                parkingSurface = Surface(parkingTexture)
+            }
+            c.setOutputSurface(parkingSurface!!)
+            Log.i(TAG,"decoder output parked; reference state retained fed=$fed")
+        } catch (e: Exception) { failCodec(c,"parking output surface",e) }
+    }
+
     private fun setHasFrames(value: Boolean) {
+        confirmedSurfaceOwner = if (value) target?.owner else null
         if (hasFrames != value) { hasFrames = value; onFramesChanged(value) }
     }
 
@@ -166,6 +212,8 @@ class VideoDecoder(
         codecHandler.post {
             target = null
             resetCodec()
+            parkingSurface?.release(); parkingSurface = null
+            parkingTexture?.release(); parkingTexture = null
             codecThread.quitSafely()
         }
     }
@@ -186,7 +234,11 @@ class VideoDecoder(
             extractParams(data)
             // Never restart from dependent P/B pictures after a codec failure.
             if (waitingForKeyFrame) {
-                if (!findStartCodes(data).any { it + 4 < data.size && (data[it + 4].toInt() and 0x1f) == 5 }) return@post
+                if (!findStartCodes(data).any { it + 4 < data.size && (data[it + 4].toInt() and 0x1f) == 5 }) {
+                    val now = SystemClock.uptimeMillis()
+                    if (now-lastKeyframeWaitLog>5000) { lastKeyframeWaitLog=now; Log.i(TAG,"waiting for IDR: codec=${codec!=null} target=${canRender()} params=${sps!=null && pps!=null}") }
+                    return@post
+                }
                 if (!canRender() || sps == null || pps == null) return@post
                 waitingForKeyFrame = false
             }
@@ -304,6 +356,7 @@ class VideoDecoder(
                 return
             }
             if (!visible) return
+            lastOutputSubmittedAt = SystemClock.uptimeMillis()
             rendered++
             confirmSurfaceBuffer(c)
             if (rendered == 1L || rendered % 60 == 0L) Log.i(TAG, "rendered $rendered frames")
