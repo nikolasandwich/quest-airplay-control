@@ -25,7 +25,7 @@ android {
         minSdk = 28
         targetSdk = 34
         versionCode = 36
-        versionName = "0.2.29-openssl3-preview"
+        versionName = "0.2.29"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
