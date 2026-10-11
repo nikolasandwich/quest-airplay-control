@@ -46,8 +46,21 @@
 - Decoder ingress backlog risk from the earlier audit is not fixed in this version.
 - Complete corresponding dependency source and runtime notice inventory still need
   packaging/verification before distributing a public binary.
-- Refresh main/settings screenshots to show the Beta notice, and update the Meta
-  submission to the final accepted candidate. Code 39 has NOT been uploaded or
-  substituted into the submission. No store review was submitted.
+- Refresh main/settings screenshots to show the Beta notice.
+
+## Store submission update — 2026-10-11
+
+- At the user's explicit instruction to submit, uploaded the signed code 39 APK
+  to Production (Store), with Quest 3 family and Future devices supported.
+- Confirmed mixed age groups, saved the no-ads declaration and Bluetooth
+  permission explanations, and associated version 0.2.31 with the initial listing.
+- Meta's malware and security vulnerability checks both passed.
+- Submitted for review. The dashboard confirms metadata v1 and binary v0.2.31
+  are Submitted, with submission date 2026-10-11 and no review date yet.
+- This is not approval or public launch. The dashboard indicates launch can be
+  configured after approval. Pricing remains free and Beta disclosures remain.
+- Reviewer notes explicitly disclose that Quest 3 testing used the same-source
+  debug-signed app, not a separate regression of the exact store-signed APK.
+  The other open items above are not resolved by submitting for review.
 
 Public privacy page: https://quest-mirror-mouse.nikolasandwich.chatgpt.site/#privacy
