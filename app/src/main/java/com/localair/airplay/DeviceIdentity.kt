@@ -6,6 +6,7 @@ import android.os.Build
 import java.net.NetworkInterface
 
 object DeviceIdentity {
+    const val PRODUCT_NAME = "Mirror and Mouse"
 
     fun macAddress(context: Context): String {
         networkInterfaceMac("wlan0")?.let { return it }
@@ -20,7 +21,12 @@ object DeviceIdentity {
 
     fun deviceName(context: Context): String {
         val prefs = context.getSharedPreferences("localair", Context.MODE_PRIVATE)
-        return prefs.getString("device_name", null) ?: "Quest AirPlay Lab"
+        val saved = prefs.getString("device_name", null)
+        if (saved.isNullOrBlank() || saved == "Quest AirPlay Lab") {
+            prefs.edit().putString("device_name", PRODUCT_NAME).apply()
+            return PRODUCT_NAME
+        }
+        return saved
     }
 
     private fun networkInterfaceMac(ifName: String): String? = runCatching {

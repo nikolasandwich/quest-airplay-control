@@ -123,7 +123,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
         hidStatus = TextView(this).apply {
             setTextColor(Color.LTGRAY); textSize = 15f; gravity = Gravity.CENTER
             setPadding(12, 8, 12, 8)
-            text = AppText.get(R.string.quest_mirror_mouse_starting)
+            text = AppText.get(R.string.preview_label) + " · " + AppText.get(R.string.quest_mirror_mouse_starting)
             maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END
         }
         // Status updates cannot change the weighted video area's size.
@@ -280,6 +280,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             if(rayAlignment.enabled)detail=rayAlignment.calibration.status
             else primary=rayAlignment.calibration.status
         }
+        primary=AppText.get(R.string.preview_label)+" · "+primary
         if(hidStatus.text.toString()!=primary)hidStatus.text=primary
         hidStatus.contentDescription=primary+". "+detail
         alignButton.text = if (alignmentRequested) AppText.get(R.string.alignment_on) else AppText.get(R.string.alignment_off)
@@ -332,6 +333,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             text=AppText.get(R.string.app_settings);textSize=26f;setTextColor(Color.WHITE);setPadding(0,16,0,16)
         })
         val content=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL}
+        content.addView(TextView(this).apply {
+            text=AppText.get(R.string.preview_notice);textSize=16f
+            setTextColor(Color.rgb(255,209,102));setPadding(dp(4),0,dp(4),dp(16))
+        })
         val selected=when(AppText.selection(this)){
             "en" -> AppText.get(R.string.language_english)
             "de" -> AppText.get(R.string.language_german)

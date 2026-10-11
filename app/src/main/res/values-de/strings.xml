@@ -5,8 +5,8 @@
     <string name="mouse_control_is_not_enabled">"Maussteuerung ist nicht aktiviert"</string>
     <string name="waiting_for_mirroring">"Warten auf Übertragung"</string>
     <string name="waiting_for_a_new_video_frame">"Warten auf ein neues Videobild"</string>
-    <string name="quest_mirror_mouse_starting">"Quest Mirror &amp; Mouse · Startet"</string>
-    <string name="quest_mirror_mouse">"Quest Mirror &amp; Mouse"</string>
+    <string name="quest_mirror_mouse_starting">"Mirror and Mouse · Startet"</string>
+    <string name="quest_mirror_mouse">"Mirror and Mouse"</string>
     <string name="connect_mouse">"Maus verbinden"</string>
     <string name="enable_control">"Steuerung an"</string>
     <string name="scroll_up">"Nach oben"</string>
@@ -49,12 +49,12 @@
     <string name="mouse_disconnected">"Maus nicht verbunden"</string>
     <string name="connect_the_paired_ipad_and_keep_the">"Gekoppeltes iPad verbinden und Übertragungsfenster im Vordergrund lassen"</string>
     <string name="mouse_control_enabled_point_at_the_mirrored">"Maussteuerung aktiv: auf das übertragene Bild zeigen; mit dem Stick scrollen"</string>
-    <string name="mouse_release_unconfirmed_reconnect_the_original_quest">"Loslassen nicht bestätigt · Ursprüngliches Quest-Bluetooth-Gerät erneut verbinden"</string>
-    <string name="disconnect_and_reconnect_the_original_quest_device">"Ursprüngliches Quest-Gerät in den iPad-Bluetooth-Einstellungen trennen und erneut verbinden"</string>
+    <string name="mouse_release_unconfirmed_reconnect_the_original_quest">"Loslassen nicht bestätigt · Ursprüngliches Mirror and Mouse-Bluetooth-Gerät erneut verbinden"</string>
+    <string name="disconnect_and_reconnect_the_original_quest_device">"Ursprüngliches Mirror and Mouse-Gerät in den iPad-Bluetooth-Einstellungen trennen und erneut verbinden"</string>
     <string name="scroll_up_down_drag_left_right_click">"Nach oben/unten scrollen · Links/rechts ziehen · Am iPad-Zeiger klicken"</string>
     <string name="mouse_connected_enable_control_to_start">"Maus verbunden · Steuerung zum Start aktivieren"</string>
     <string name="bluetooth_connected_waiting_for_mouse_subscription">"Bluetooth verbunden · Warten auf Maus-Anmeldung"</string>
-    <string name="connect_the_original_quest_device_in_ipad">"Ursprüngliches Quest-Gerät in den iPad-Bluetooth-Einstellungen verbinden"</string>
+    <string name="connect_the_original_quest_device_in_ipad">"Ursprüngliches Mirror and Mouse-Gerät in den iPad-Bluetooth-Einstellungen verbinden"</string>
     <string name="mouse_confirmation_timed_out_connection_stopped_reconnect">"Mausbestätigung abgelaufen · Verbindung beendet; ursprüngliches Gerät erneut verbinden"</string>
     <string name="move_the_ray_to_identify_the_pointer">"Strahl bewegen, um den Zeiger zu erkennen"</string>
     <string name="point_at_the_mirrored_screen">"Auf das übertragene Bild zeigen"</string>
@@ -127,7 +127,7 @@
     <string name="direct_no_detection">"Direkte Steuerung ohne Erkennung"</string>
     <string name="receiver_running">"%1$s · Empfänger läuft"</string>
     <string name="capture_finished">"Nur-Lese-Aufnahme beendet: %1$d Bilder (%2$s)"</string>
-    <string name="app_name">"Quest Mirror &amp; Mouse"</string>
+    <string name="app_name">"Mirror and Mouse"</string>
     <string name="ui_language">de</string>
     <string name="language_settings">"Sprache / Language"</string>
     <string name="follow_system">"Systemsprache"</string>
@@ -143,7 +143,7 @@
     <string name="ray_setting_description">"Der relative Strahl bewegt den iPad-Zeiger. Ausschalten beendet die Übertragung nicht."</string>
     <string name="alignment_setting_description">"Die Ausrichtungshilfe ist standardmäßig an. Sie korrigiert visuell, sobald die Maussteuerung aktiv ist. Auf dieser Einstellungsseite pausiert sie; Ihre Auswahl wird gespeichert."</string>
     <string name="speed_setting_description">"Die Hilfsgeschwindigkeit ändert nur die visuelle Korrektur, nicht die direkte Mausempfindlichkeit."</string>
-    <string name="main_buttons_description">"Maus verbinden startet die Bluetooth-Einrichtung. Aktivieren/Pausieren erlaubt oder stoppt Mauseingaben. Nach oben/unten sendet Scrollbewegungen; die iPad-App bestimmt das Ergebnis. Zurücksetzen deaktiviert die Hilfe und stellt die direkte Steuerung wieder her.\n\niPad: Grundlegende Mausbedienung funktioniert ab iPadOS 13.4 normalerweise ohne AssistiveTouch. iPhone: Aktiviere Einstellungen &gt; Bedienungshilfen &gt; Tippen &gt; AssistiveTouch. Kopple oder verbinde danach die Quest-Maus in den Bluetooth-Einstellungen. Bildschirmübertragung allein verbindet die Maus nicht. Wähle zuletzt Steuerung aktivieren in der Quest-App."</string>
+    <string name="main_buttons_description">"Maus verbinden startet die Bluetooth-Einrichtung. Aktivieren/Pausieren erlaubt oder stoppt Mauseingaben. Nach oben/unten sendet Scrollbewegungen; die iPad-App bestimmt das Ergebnis. Zurücksetzen deaktiviert die Hilfe und stellt die direkte Steuerung wieder her.\n\niPad: Grundlegende Mausbedienung funktioniert ab iPadOS 13.4 normalerweise ohne AssistiveTouch. iPhone: Aktiviere Einstellungen &gt; Bedienungshilfen &gt; Tippen &gt; AssistiveTouch. Kopple oder verbinde danach die Mirror and Mouse-Maus in den Bluetooth-Einstellungen. Bildschirmübertragung allein verbindet die Maus nicht. Wähle zuletzt Steuerung aktivieren in der Quest-App."</string>
     <string name="pointer_buttons_description">"Links/rechts ziehen drückt an der aktuellen iPad-Zeigerposition, zieht und lässt los. Mausklick klickt dort. Die Steuerung muss aktiv sein. Sprache gilt nur für diese App; Zurück führt zur Übertragung."</string>
     <string name="button_guide">Bedienungshilfe</string>
     <string name="quick_start">"Erste Schritte"</string>
@@ -152,8 +152,8 @@
     <string name="guide_skip">"Überspringen"</string>
     <string name="guide_done">"Fertig"</string>
     <string name="start_card_1">"1. App öffnen\nVerbinde Quest und iPad mit demselben WLAN. Lass diese App während der Übertragung geöffnet."</string>
-    <string name="start_card_2">"2. Bildschirm übertragen\nÖffne auf dem iPad das Kontrollzentrum, wähle Bildschirmsynchronisierung und dann Quest AirPlay Lab. Warte, bis das iPad-Bild erscheint."</string>
-    <string name="start_card_3">"3. Maus verbinden\nKehre zur Übertragung zurück und wähle Maus verbinden. Erlaube bei Nachfrage den Bluetooth-Zugriff. Kopple oder verbinde das Quest-Mausgerät in den Bluetooth-Einstellungen des iPads.\n\niPad: Grundlegende Mausbedienung funktioniert ab iPadOS 13.4 normalerweise ohne AssistiveTouch. iPhone: Aktiviere Einstellungen &gt; Bedienungshilfen &gt; Tippen &gt; AssistiveTouch. Kopple oder verbinde danach die Quest-Maus in den Bluetooth-Einstellungen. Bildschirmübertragung allein verbindet die Maus nicht. Wähle zuletzt Steuerung aktivieren in der Quest-App."</string>
+    <string name="start_card_2">"2. Bildschirm übertragen\nÖffne auf dem iPad das Kontrollzentrum, wähle Bildschirmsynchronisierung und dann Mirror and Mouse. Warte, bis das iPad-Bild erscheint."</string>
+    <string name="start_card_3">"3. Maus verbinden\nKehre zur Übertragung zurück und wähle Maus verbinden. Erlaube bei Nachfrage den Bluetooth-Zugriff. Kopple oder verbinde das Mirror and Mouse-Mausgerät in den Bluetooth-Einstellungen des iPads.\n\niPad: Grundlegende Mausbedienung funktioniert ab iPadOS 13.4 normalerweise ohne AssistiveTouch. iPhone: Aktiviere Einstellungen &gt; Bedienungshilfen &gt; Tippen &gt; AssistiveTouch. Kopple oder verbinde danach die Mirror and Mouse-Maus in den Bluetooth-Einstellungen. Bildschirmübertragung allein verbindet die Maus nicht. Wähle zuletzt Steuerung aktivieren in der Quest-App."</string>
     <string name="start_card_4">"4. Steuerung aktivieren\nAktiviere die Steuerung. Bewege den Strahl, um den iPad-Zeiger zu bewegen. Bestätigen klickt an der Zeigerposition. Keine Kalibrierung nötig."</string>
     <string name="start_card_5">"5. Im Alltag\nPausiere bei Bedarf die Steuerung. Sprache, Strahl und Ausrichtungshilfe stehen in den Einstellungen. Aktiviere danach die Steuerung erneut. Steuerung wiederherstellen schaltet die Hilfe aus, zentriert aber nicht den Zeiger.\nTippe rechts auf das Schloss, um die oberen und unteren Bedienelemente auszublenden. Erneutes Tippen zeigt sie wieder. Die Maussteuerung bleibt aktiv.\nBei ausgeblendeten Bedienelementen verschwindet das Schloss nach drei Sekunden. Ziele rechts auf seine Position, um es anzuzeigen. Bewege den Strahl weg, um es wieder auszublenden."</string>
     <string name="show_controls">Bedienelemente anzeigen</string>
@@ -162,4 +162,10 @@
     <string name="drag_distance">"Horizontale Ziehstrecke"</string>
     <string name="scroll_speed">"Scrollgeschwindigkeit"</string>
     <string name="motion_gain_help" formatted="false">"25–200 %; 100 % entspricht dem bisherigen Verhalten. Die Ziehstrecke gilt für Links/Rechts, die Scrollgeschwindigkeit für Auf/Ab und System-Scrollereignisse. Stärkere oder längere vertikale Eingaben scrollen mehr. Horizontal wird einmal pro Bewegung gezogen. Die Zeigergeschwindigkeit bleibt gleich."</string>
+    <string name="mouse_pairing_required">Bluetooth verbunden, Kopplung unvollständig. Zum Koppeln Maus verbinden wählen.</string>
+    <string name="mouse_pairing_pending">Bluetooth-Kopplung auf beiden Geräten bestätigen; Steuerung bleibt aus.</string>
+    <string name="mouse_pairing_failed">Kopplung nicht abgeschlossen. Hinweise prüfen und Maus verbinden erneut wählen.</string>
+    <string name="mouse_pairing_complete">Kopplung abgeschlossen. Maus-Abonnement abwarten und Steuerung manuell aktivieren.</string>
+    <string name="preview_label">"Beta-Vorschau"</string>
+    <string name="preview_notice">"Beta-Vorschau: Kompatibilität und Zeigergenauigkeit werden noch verbessert. Die Ausrichtungshilfe ist experimentell."</string>
 </resources>

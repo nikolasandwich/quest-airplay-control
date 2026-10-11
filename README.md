@@ -1,10 +1,11 @@
-# Quest AirPlay and Mouse
+# Mirror and Mouse
 
 Quest 3 Android AirPlay receiver with service-owned BLE HID mouse controls, based on [localair](https://github.com/phoria-sam-tg/localair).
 
-## Current preview: 0.2.29-openssl3-preview
+## Current preview: 0.2.30
 
-Version code 36. Adds relative ray control, shape-and-motion tracking, four
+Version code 38. Uses Mirror and Mouse as the app, default receiver and Bluetooth
+name, and includes user-requested Bluetooth pairing recovery. Adds relative ray control, shape-and-motion tracking, four
 languages, settings, onboarding, adjustable gestures and hideable controls.
 Context loss disarms input; resume manually. Pause before removing the headset.
 Immediate physical headset-removal detection is not verified.
@@ -76,7 +77,7 @@ cp local.properties.example local.properties # edit sdk.dir for your machine
 
 `setup-deps.sh` pins RPiPlay and libplist to the tested revisions and idempotently applies [the native lifecycle patch](patches/RPiPlay-quest-lifecycle.patch). Existing dependencies at other revisions are left untouched and reported as an error. Dependency checkouts, local SDK paths, APKs, raw device logs, and Bluetooth preference backups are excluded from this repository.
 
-The Android package is `com.questlab.airplayreceiver`, versionCode 36. Installing or restarting it interrupts the active AirPlay session; schedule device validation with the user. The earlier standalone HID app is retained for rollback and should not run its GATT service concurrently.
+The Android package is `com.questlab.airplayreceiver`, versionCode 37. Installing or restarting it interrupts the active AirPlay session; schedule device validation with the user. Starting the mouse service sets the headset's shared Bluetooth adapter name to **Mirror and Mouse**. Existing paired devices may show a cached name. The old default AirPlay receiver name is migrated; custom receiver names are preserved. The earlier standalone HID app is retained for rollback and should not run its GATT service concurrently.
 
 ## Licensing
 

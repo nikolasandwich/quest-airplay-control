@@ -8,8 +8,8 @@ final class DefaultText {
         if(id==R.string.mouse_control_is_not_enabled)return "Mouse control is not enabled";
         if(id==R.string.waiting_for_mirroring)return "Waiting for mirroring";
         if(id==R.string.waiting_for_a_new_video_frame)return "Waiting for a new video frame";
-        if(id==R.string.quest_mirror_mouse_starting)return "Quest Mirror & Mouse · Starting";
-        if(id==R.string.quest_mirror_mouse)return "Quest Mirror & Mouse";
+        if(id==R.string.quest_mirror_mouse_starting)return "Mirror and Mouse · Starting";
+        if(id==R.string.quest_mirror_mouse)return "Mirror and Mouse";
         if(id==R.string.connect_mouse)return "Connect mouse";
         if(id==R.string.enable_control)return "Enable control";
         if(id==R.string.scroll_up)return "Scroll up";
@@ -52,12 +52,12 @@ final class DefaultText {
         if(id==R.string.mouse_disconnected)return "Mouse disconnected";
         if(id==R.string.connect_the_paired_ipad_and_keep_the)return "Connect the paired iPad and keep the mirroring window in the foreground";
         if(id==R.string.mouse_control_enabled_point_at_the_mirrored)return "Mouse control enabled: point at the mirrored screen; use the stick to scroll";
-        if(id==R.string.mouse_release_unconfirmed_reconnect_the_original_quest)return "Mouse release unconfirmed · Reconnect the original Quest Bluetooth device";
-        if(id==R.string.disconnect_and_reconnect_the_original_quest_device)return "Disconnect and reconnect the original Quest device in iPad Bluetooth settings";
+        if(id==R.string.mouse_release_unconfirmed_reconnect_the_original_quest)return "Mouse release unconfirmed · Reconnect the original Mirror and Mouse Bluetooth device";
+        if(id==R.string.disconnect_and_reconnect_the_original_quest_device)return "Disconnect and reconnect the original Mirror and Mouse device in iPad Bluetooth settings";
         if(id==R.string.scroll_up_down_drag_left_right_click)return "Scroll up/down · Drag left/right · Click at the iPad pointer";
         if(id==R.string.mouse_connected_enable_control_to_start)return "Mouse connected · Enable control to start";
         if(id==R.string.bluetooth_connected_waiting_for_mouse_subscription)return "Bluetooth connected · Waiting for mouse subscription";
-        if(id==R.string.connect_the_original_quest_device_in_ipad)return "Connect the original Quest device in iPad Bluetooth settings";
+        if(id==R.string.connect_the_original_quest_device_in_ipad)return "Connect the original Mirror and Mouse device in iPad Bluetooth settings";
         if(id==R.string.mouse_confirmation_timed_out_connection_stopped_reconnect)return "Mouse confirmation timed out · Connection stopped; reconnect the original device";
         if(id==R.string.move_the_ray_to_identify_the_pointer)return "Move the ray to identify the pointer";
         if(id==R.string.point_at_the_mirrored_screen)return "Point at the mirrored screen";
@@ -130,7 +130,7 @@ final class DefaultText {
         if(id==R.string.direct_no_detection)return "Direct control, no detection needed";
         if(id==R.string.receiver_running)return "%1$s · Receiver running";
         if(id==R.string.capture_finished)return "Read-only capture finished: %1$d frames (%2$s)";
-        if(id==R.string.app_name)return "Quest Mirror & Mouse";
+        if(id==R.string.app_name)return "Mirror and Mouse";
         if(id==R.string.ui_language)return "en";
         if(id==R.string.language_settings)return "Language";
         if(id==R.string.follow_system)return "Follow system";
@@ -146,7 +146,7 @@ final class DefaultText {
         if(id==R.string.ray_setting_description)return "Relative ray moves the iPad pointer with your ray. Turning it off does not stop mirroring.";
         if(id==R.string.alignment_setting_description)return "Alignment assist is on by default. It uses experimental visual correction after mouse control is enabled. It pauses on this settings page; your choice is saved.";
         if(id==R.string.speed_setting_description)return "Assist speed changes visual correction only. It does not change direct mouse sensitivity.";
-        if(id==R.string.main_buttons_description)return "Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control.\n\niPad: basic mouse input on iPadOS 13.4 or later normally works without AssistiveTouch. iPhone: enable Settings > Accessibility > Touch > AssistiveTouch, then pair or reconnect the Quest mouse in Bluetooth settings. Mirroring alone does not connect the mouse. Finally, select Enable control in the Quest app.";
+        if(id==R.string.main_buttons_description)return "Connect mouse starts Bluetooth setup. Enable/Pause allows or stops mouse input. Scroll up/down sends scrolling; the iPad app decides how content changes. Restore control disables assist and restores base relative control.\n\niPad: basic mouse input on iPadOS 13.4 or later normally works without AssistiveTouch. iPhone: enable Settings > Accessibility > Touch > AssistiveTouch, then pair or reconnect the Mirror and Mouse mouse in Bluetooth settings. Mirroring alone does not connect the mouse. Finally, select Enable control in the Quest app.";
         if(id==R.string.pointer_buttons_description)return "Drag left/right holds the mouse button at the current iPad pointer, drags, then releases. Click pointer clicks that position. These actions need enabled control. Language applies only to this app; Back returns to mirroring.";
         if(id==R.string.button_guide)return "Button guide";
         if(id==R.string.quick_start)return "Quick start";
@@ -155,8 +155,8 @@ final class DefaultText {
         if(id==R.string.guide_skip)return "Skip";
         if(id==R.string.guide_done)return "Done";
         if(id==R.string.start_card_1)return "1. Open the app\nKeep Quest and iPad on the same Wi-Fi. Leave this app open while mirroring.";
-        if(id==R.string.start_card_2)return "2. Start mirroring\nOn iPad, open Control Center, choose Screen Mirroring, then select Quest AirPlay Lab. Wait for the iPad picture to appear.";
-        if(id==R.string.start_card_3)return "3. Connect the mouse\nReturn to mirroring and select Connect mouse. Allow Bluetooth access if asked. In iPad Bluetooth settings, pair or reconnect the Quest mouse device.\n\niPad: basic mouse input on iPadOS 13.4 or later normally works without AssistiveTouch. iPhone: enable Settings > Accessibility > Touch > AssistiveTouch, then pair or reconnect the Quest mouse in Bluetooth settings. Mirroring alone does not connect the mouse. Finally, select Enable control in the Quest app.";
+        if(id==R.string.start_card_2)return "2. Start mirroring\nOn iPad, open Control Center, choose Screen Mirroring, then select Mirror and Mouse. Wait for the iPad picture to appear.";
+        if(id==R.string.start_card_3)return "3. Connect the mouse\nReturn to mirroring and select Connect mouse. Allow Bluetooth access if asked. In iPad Bluetooth settings, pair or reconnect the Mirror and Mouse mouse device.\n\niPad: basic mouse input on iPadOS 13.4 or later normally works without AssistiveTouch. iPhone: enable Settings > Accessibility > Touch > AssistiveTouch, then pair or reconnect the Mirror and Mouse mouse in Bluetooth settings. Mirroring alone does not connect the mouse. Finally, select Enable control in the Quest app.";
         if(id==R.string.start_card_4)return "4. Enable control\nSelect Enable control. Move the ray to move the iPad pointer; confirm clicks the pointer position. No calibration is needed.";
         if(id==R.string.start_card_5)return "5. Everyday use\nPause control when needed. Settings contains language, ray and alignment options. After leaving Settings, enable control again. Restore control turns assist off; it does not center the pointer.\nTap the lock on the right to hide the top and bottom controls. Tap it again to show them. This only hides the interface; mouse control continues.\nWith controls hidden, the lock disappears after three seconds. Point at its position on the right to reveal it; move away to hide it again.";
         if(id==R.string.show_controls)return "Show controls";
@@ -165,6 +165,12 @@ final class DefaultText {
         if(id==R.string.drag_distance)return "Horizontal drag distance";
         if(id==R.string.scroll_speed)return "Scroll speed";
         if(id==R.string.motion_gain_help)return "25–200%; 100% keeps the original feel. Drag distance affects left/right actions. Scroll speed affects up/down buttons and system scroll events. Stronger or sustained vertical input scrolls more; horizontal input triggers one drag per push. Pointer movement speed is unchanged.";
+        if(id==R.string.mouse_pairing_required)return "Bluetooth connected, but pairing is incomplete. Press Connect mouse to pair.";
+        if(id==R.string.mouse_pairing_pending)return "Confirm Bluetooth pairing on both devices; control stays off.";
+        if(id==R.string.mouse_pairing_failed)return "Pairing did not complete. Check the pairing prompts, then press Connect mouse to retry.";
+        if(id==R.string.mouse_pairing_complete)return "Pairing complete. Waiting for mouse subscription; enable control when ready.";
+        if(id==R.string.preview_label)return "Beta preview";
+        if(id==R.string.preview_notice)return "Beta preview — compatibility and pointer accuracy are still being improved. Alignment assist is experimental.";
         throw new IllegalArgumentException("Unknown text resource: "+id);
     }
 }

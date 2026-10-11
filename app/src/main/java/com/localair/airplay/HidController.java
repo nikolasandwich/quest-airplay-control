@@ -67,6 +67,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     public void toggleArmed() {
         if(armed){disarm();return;}
         if(!checkInputContext()){note(AppText.get(R.string.waiting_for_mirroring));return;}
+        if(host!=null&&host.getBondState()!=BluetoothDevice.BOND_BONDED){requestPairing();return;}
         if(releaseUnconfirmed||needsReconnect||!focused||!serviceReady||host==null||!subscribed||suspended||protocolMode!=1||host.getBondState()!=BluetoothDevice.BOND_BONDED) {
             note(AppText.get(R.string.connect_the_paired_ipad_and_keep_the));return;
         }
@@ -97,12 +98,48 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         if(releaseUnconfirmed)return AppText.get(R.string.mouse_release_unconfirmed_reconnect_the_original_quest);
         if(needsReconnect)return AppText.get(R.string.disconnect_and_reconnect_the_original_quest_device);
         if(armed)return AppText.get(R.string.scroll_up_down_drag_left_right_click);
+        if(host!=null&&host.getBondState()!=BluetoothDevice.BOND_BONDED)
+            return AppText.get(pairingPeer!=null?R.string.mouse_pairing_pending:pairingFailed?R.string.mouse_pairing_failed:R.string.mouse_pairing_required);
         if(host!=null&&subscribed)return AppText.get(R.string.mouse_connected_enable_control_to_start);
         if(host!=null)return AppText.get(R.string.bluetooth_connected_waiting_for_mouse_subscription);
         if(advertising)return AppText.get(R.string.connect_the_original_quest_device_in_ipad);
         return lastStatus;
     }
     private void changed(){if(listener!=null)listener.run();}
+    // Pair only after an explicit Connect/Enable action; never auto-arm or trust
+    // an unbonded link merely because the OS reports it as connected.
+    private BluetoothDevice pairingPeer;
+    private boolean pairingFailed;
+    private long pairingDeadline;
+    private int pairingGeneration;
+    private void clearPairingAttempt(){handler.removeCallbacks(pairingPoll);pairingPeer=null;}
+    private void requestPairing(){
+        if(!permitted()||!focused||!serviceReady||server==null||host==null)return;
+        if(host.getBondState()==BluetoothDevice.BOND_BONDED)return;
+        if(pairingPeer!=null){note(AppText.get(R.string.mouse_pairing_pending));return;}
+        disarm();subscribed=false;bootSubscribed=false;
+        getSharedPreferences("hid",MODE_PRIVATE).edit()
+            .remove("schema2_cccd_"+host.getAddress()).remove("schema2_boot_cccd_"+host.getAddress()).apply();
+        pairingFailed=false;pairingPeer=host;pairingGeneration=generation;pairingDeadline=SystemClock.uptimeMillis()+30000;
+        try {
+            boolean accepted=host.getBondState()==BluetoothDevice.BOND_BONDING||host.createBond();
+            note("User-requested pairing accepted="+accepted);
+            if(!accepted){clearPairingAttempt();pairingFailed=true;note(AppText.get(R.string.mouse_pairing_failed));return;}
+            note(AppText.get(R.string.mouse_pairing_pending));handler.postDelayed(pairingPoll,500);
+        }catch(RuntimeException e){clearPairingAttempt();pairingFailed=true;note(AppText.get(R.string.mouse_pairing_failed));}
+    }
+    private final Runnable pairingPoll=new Runnable(){public void run(){
+        if(pairingPeer==null)return;
+        if(pairingGeneration!=generation||server==null||!pairingPeer.equals(host)){clearPairingAttempt();return;}
+        int state=pairingPeer.getBondState();
+        if(state==BluetoothDevice.BOND_BONDED){
+            clearPairingAttempt();note(AppText.get(R.string.mouse_pairing_complete));return;
+        }
+        if(SystemClock.uptimeMillis()>=pairingDeadline){
+            clearPairingAttempt();pairingFailed=true;note(AppText.get(R.string.mouse_pairing_failed));return;
+        }
+        handler.postDelayed(this,500);
+    }};
     private void note(String text) {
         Log.i("QuestHidLab",text);
         diagnostics.append(System.currentTimeMillis()+" "+text);
@@ -292,8 +329,10 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     public void start() {
         if(!permitted()){note("Bluetooth permission required");return;}
+        prepareBluetoothName();
         if(server!=null){
             if(serviceReady&&host==null)restartAdvertising();
+            else if(serviceReady&&host!=null&&host.getBondState()!=BluetoothDevice.BOND_BONDED)requestPairing();
             else note("Mouse service state: ready="+serviceReady+" host="+(host!=null)+" subscribed="+subscribed+" suspended="+suspended+" protocol="+protocolMode+" focused="+focused+" armed="+armed+" reconnect="+needsReconnect);
             changed();return;
         }
@@ -325,12 +364,24 @@ public final class HidController extends ContextWrapper implements RayInputTrans
             // Bluetooth SIG source, reserved internal/interoperability test vendor
             // 0xffff, local product 1, version 0x0018. Not a shipping vendor ID.
             device.addCharacteristic(characteristic(0x2a50,2,1,new byte[]{1,(byte)0xff,(byte)0xff,1,0,0x18,0}));
-            device.addCharacteristic(characteristic(0x2a24,2,1,"Quest HID Lab prototype".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            device.addCharacteristic(characteristic(0x2a24,2,1,DeviceIdentity.PRODUCT_NAME.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.8-align-preview".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             pendingServices.clear();
             pendingServices.add(service);pendingServices.add(battery);pendingServices.add(device);
             addNextService();
         }catch(Exception e){note("start failed: "+e.getClass().getSimpleName());stop();}
+    }
+    private long bluetoothNameDeadline;
+    private void prepareBluetoothName() {
+        if(adapter==null||!adapter.isEnabled())return;
+        try {
+            if(DeviceIdentity.PRODUCT_NAME.equals(adapter.getName()))return;
+            // Android advertises the adapter's shared local name. Renaming does
+            // not clear bonds, disconnect the host, or enable pointer input.
+            boolean accepted=adapter.setName(DeviceIdentity.PRODUCT_NAME);
+            bluetoothNameDeadline=accepted?SystemClock.uptimeMillis()+3000:0;
+            note("Bluetooth local name update accepted="+accepted);
+        }catch(RuntimeException e){bluetoothNameDeadline=0;note("Bluetooth local name update unavailable; retaining current name");}
     }
     private void restartAdvertising() {
         if(!permitted()||!serviceReady||server==null||adapter==null||!adapter.isEnabled())return;
@@ -345,6 +396,9 @@ public final class HidController extends ContextWrapper implements RayInputTrans
     }
     private final Runnable resumeAdvertising=() -> {
         if(server==null||!serviceReady||host!=null||!permitted()||adapter==null||!adapter.isEnabled())return;
+        if(bluetoothNameDeadline>SystemClock.uptimeMillis()&&!DeviceIdentity.PRODUCT_NAME.equals(adapter.getName())){
+            handler.postDelayed(this.resumeAdvertising,100);return;
+        }
         BluetoothLeAdvertiser advertiser=adapter.getBluetoothLeAdvertiser();
         if(advertiser==null)return;
         AdvertiseData data=new AdvertiseData.Builder().addServiceUuid(new ParcelUuid(uuid(0x1812))).build();
@@ -352,7 +406,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         advertiser.startAdvertising(new AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY).setConnectable(true).setTimeout(0).build(),data,scan,this.advertiseCallback);
     };
     private final AdvertiseCallback advertiseCallback=new AdvertiseCallback(){
-        @Override public void onStartSuccess(AdvertiseSettings settings){handler.post(()->{if(server==null)return;advertising=true;note("BLE advertisement ACTIVE; iPad Bluetooth should discover the Quest system name. No input is sent until armed.");});}
+        @Override public void onStartSuccess(AdvertiseSettings settings){handler.post(()->{if(server==null)return;advertising=true;note("BLE advertisement ACTIVE; local name="+adapter.getName()+". No input is sent until armed.");});}
         @Override public void onStartFailure(int code){handler.post(()->{if(server==null)return;note("BLE advertising failed code="+code);});}
     };
     private BluetoothGattServerCallback createCallback(final int epoch) { return new BluetoothGattServerCallback(){
@@ -367,6 +421,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
                 if(host!=null&&host.equals(d)){note("Duplicate connected callback ignored");return;}
                 if(host!=null&&!host.equals(d)){server.cancelConnection(d);note("Additional host rejected: one diagnostic host only");return;}
                 resetPointerLink();host=d;lastPeer=d;armed=false;suspended=false;protocolMode=1;notificationPending=false;needsReconnect=false;
+                pairingFailed=false;
                 cancelGesture();mappedScroll.stop();
                 if(d.equals(pendingReconnect)){handler.removeCallbacks(reconnectTimeout);pendingReconnect=null;}
                 values.put(uuid(0x2a4e),new byte[]{1});
@@ -378,6 +433,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
             }
             else if(state==BluetoothProfile.STATE_DISCONNECTED){
                 if(host!=null&&!host.equals(d))return;
+                clearPairingAttempt();
                 cancelGesture();mappedScroll.stop();resetPointerLink();
                 host=null;subscribed=false;bootSubscribed=false;armed=false;suspended=false;
                 // Re-advertising an unbonded link can create a second pairing
@@ -493,6 +549,8 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         return accepted;
     }
     public void stop(){
+        clearPairingAttempt();
+        pairingFailed=false;
         cancelPointerAction();
         if(pointerAction.active()&&pointerLinkValid()){PointerAction.Packet neutral=pointerAction.next();if(neutral!=null)transmit(0,0,0,0,neutral);}
         resetPointerLink();

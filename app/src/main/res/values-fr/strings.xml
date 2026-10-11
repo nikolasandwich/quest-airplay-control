@@ -5,8 +5,8 @@
     <string name="mouse_control_is_not_enabled">"Commande de souris non activée"</string>
     <string name="waiting_for_mirroring">"En attente de recopie"</string>
     <string name="waiting_for_a_new_video_frame">"En attente d’une nouvelle image"</string>
-    <string name="quest_mirror_mouse_starting">"Quest Mirror &amp; Mouse · Démarrage"</string>
-    <string name="quest_mirror_mouse">"Quest Mirror &amp; Mouse"</string>
+    <string name="quest_mirror_mouse_starting">"Mirror and Mouse · Démarrage"</string>
+    <string name="quest_mirror_mouse">"Mirror and Mouse"</string>
     <string name="connect_mouse">"Connecter souris"</string>
     <string name="enable_control">"Activer commande"</string>
     <string name="scroll_up">"Défiler vers le haut"</string>
@@ -49,12 +49,12 @@
     <string name="mouse_disconnected">"Souris déconnectée"</string>
     <string name="connect_the_paired_ipad_and_keep_the">"Connectez l’iPad jumelé et gardez la fenêtre de recopie au premier plan"</string>
     <string name="mouse_control_enabled_point_at_the_mirrored">"Commande activée : pointez vers l’écran recopié ; utilisez le joystick pour défiler"</string>
-    <string name="mouse_release_unconfirmed_reconnect_the_original_quest">"Relâchement non confirmé · Reconnectez l’appareil Bluetooth Quest initial"</string>
-    <string name="disconnect_and_reconnect_the_original_quest_device">"Déconnectez puis reconnectez l’appareil Quest initial dans les réglages Bluetooth de l’iPad"</string>
+    <string name="mouse_release_unconfirmed_reconnect_the_original_quest">"Relâchement non confirmé · Reconnectez l’appareil Bluetooth Mirror and Mouse initial"</string>
+    <string name="disconnect_and_reconnect_the_original_quest_device">"Déconnectez puis reconnectez l’appareil Mirror and Mouse initial dans les réglages Bluetooth de l’iPad"</string>
     <string name="scroll_up_down_drag_left_right_click">"Défilement vertical · Glissement horizontal · Clic à la position du pointeur iPad"</string>
     <string name="mouse_connected_enable_control_to_start">"Souris connectée · Activez la commande pour commencer"</string>
     <string name="bluetooth_connected_waiting_for_mouse_subscription">"Bluetooth connecté · En attente de l’abonnement souris"</string>
-    <string name="connect_the_original_quest_device_in_ipad">"Connectez l’appareil Quest initial dans les réglages Bluetooth de l’iPad"</string>
+    <string name="connect_the_original_quest_device_in_ipad">"Connectez l’appareil Mirror and Mouse initial dans les réglages Bluetooth de l’iPad"</string>
     <string name="mouse_confirmation_timed_out_connection_stopped_reconnect">"Délai de confirmation dépassé · Connexion arrêtée ; reconnectez l’appareil initial"</string>
     <string name="move_the_ray_to_identify_the_pointer">"Déplacez le rayon pour identifier le pointeur"</string>
     <string name="point_at_the_mirrored_screen">"Pointez vers l’écran recopié"</string>
@@ -127,7 +127,7 @@
     <string name="direct_no_detection">"Commande directe, sans détection"</string>
     <string name="receiver_running">"%1$s · Récepteur actif"</string>
     <string name="capture_finished">"Capture en lecture seule terminée : %1$d images (%2$s)"</string>
-    <string name="app_name">"Quest Mirror &amp; Mouse"</string>
+    <string name="app_name">"Mirror and Mouse"</string>
     <string name="ui_language">fr</string>
     <string name="language_settings">"Langue / Language"</string>
     <string name="follow_system">"Langue du système"</string>
@@ -143,7 +143,7 @@
     <string name="ray_setting_description">"Le rayon relatif déplace le pointeur de l’iPad. Le désactiver n’arrête pas la recopie."</string>
     <string name="alignment_setting_description">"L’aide à l’alignement est activée par défaut. Elle effectue une correction visuelle expérimentale après activation de la commande. Elle est suspendue dans les paramètres ; votre choix est enregistré."</string>
     <string name="speed_setting_description">"La vitesse de l’aide ne modifie que la correction visuelle, pas la sensibilité directe de la souris."</string>
-    <string name="main_buttons_description">"Connecter souris prépare le Bluetooth. Activer/Suspendre autorise ou arrête les entrées. Le défilement vertical dépend de l’application iPad. Rétablir commande désactive l’aide et restaure la commande relative de base.\n\niPad : les fonctions de base de la souris fonctionnent généralement sans AssistiveTouch sur iPadOS 13.4 ou ultérieur. iPhone : activez Réglages &gt; Accessibilité &gt; Toucher &gt; AssistiveTouch, puis associez ou reconnectez la souris Quest dans les réglages Bluetooth. La recopie seule ne connecte pas la souris. Activez enfin le contrôle dans votre application Quest."</string>
+    <string name="main_buttons_description">"Connecter souris prépare le Bluetooth. Activer/Suspendre autorise ou arrête les entrées. Le défilement vertical dépend de l’application iPad. Rétablir commande désactive l’aide et restaure la commande relative de base.\n\niPad : les fonctions de base de la souris fonctionnent généralement sans AssistiveTouch sur iPadOS 13.4 ou ultérieur. iPhone : activez Réglages &gt; Accessibilité &gt; Toucher &gt; AssistiveTouch, puis associez ou reconnectez la souris Mirror and Mouse dans les réglages Bluetooth. La recopie seule ne connecte pas la souris. Activez enfin le contrôle dans votre application Quest."</string>
     <string name="pointer_buttons_description">"Glisser à gauche/droite maintient le bouton à la position du pointeur iPad, déplace puis relâche. Cliquer agit à cette position. La commande doit être activée. La langue ne concerne que cette application ; Retour revient à la recopie."</string>
     <string name="button_guide">Guide des commandes</string>
     <string name="quick_start">"Premiers pas"</string>
@@ -152,8 +152,8 @@
     <string name="guide_skip">"Passer"</string>
     <string name="guide_done">"Terminer"</string>
     <string name="start_card_1">"1. Ouvrir l’application\nConnectez Quest et iPad au même réseau Wi-Fi. Gardez cette application ouverte pendant la recopie."</string>
-    <string name="start_card_2">"2. Recopier l’écran\nSur iPad, ouvrez le centre de contrôle, choisissez Recopie de l’écran, puis Quest AirPlay Lab. Attendez que l’image apparaisse."</string>
-    <string name="start_card_3">"3. Connecter la souris\nRevenez à la recopie et choisissez Connecter la souris. Autorisez le Bluetooth si nécessaire. Associez ou reconnectez la souris Quest dans les réglages Bluetooth de l’iPad.\n\niPad : les fonctions de base de la souris fonctionnent généralement sans AssistiveTouch sur iPadOS 13.4 ou ultérieur. iPhone : activez Réglages &gt; Accessibilité &gt; Toucher &gt; AssistiveTouch, puis associez ou reconnectez la souris Quest dans les réglages Bluetooth. La recopie seule ne connecte pas la souris. Activez enfin le contrôle dans votre application Quest."</string>
+    <string name="start_card_2">"2. Recopier l’écran\nSur iPad, ouvrez le centre de contrôle, choisissez Recopie de l’écran, puis Mirror and Mouse. Attendez que l’image apparaisse."</string>
+    <string name="start_card_3">"3. Connecter la souris\nRevenez à la recopie et choisissez Connecter la souris. Autorisez le Bluetooth si nécessaire. Associez ou reconnectez la souris Mirror and Mouse dans les réglages Bluetooth de l’iPad.\n\niPad : les fonctions de base de la souris fonctionnent généralement sans AssistiveTouch sur iPadOS 13.4 ou ultérieur. iPhone : activez Réglages &gt; Accessibilité &gt; Toucher &gt; AssistiveTouch, puis associez ou reconnectez la souris Mirror and Mouse dans les réglages Bluetooth. La recopie seule ne connecte pas la souris. Activez enfin le contrôle dans votre application Quest."</string>
     <string name="start_card_4">"4. Activer le contrôle\nActivez le contrôle. Déplacez le rayon pour déplacer le pointeur de l’iPad ; la confirmation clique à sa position. Aucun calibrage nécessaire."</string>
     <string name="start_card_5">"5. Utilisation quotidienne\nMettez le contrôle en pause au besoin. Les réglages contiennent la langue, le rayon et l’assistance. Réactivez le contrôle après les réglages. Restaurer le contrôle désactive l’assistance sans recentrer le pointeur.\nTouchez le cadenas à droite pour masquer les commandes du haut et du bas. Touchez-le à nouveau pour les afficher. Le contrôle de la souris reste actif.\nQuand les commandes sont masquées, le cadenas disparaît après trois secondes. Pointez vers sa position à droite pour le révéler ; éloignez le rayon pour le masquer à nouveau."</string>
     <string name="show_controls">Afficher les commandes</string>
@@ -162,4 +162,10 @@
     <string name="drag_distance">"Distance de glissement horizontal"</string>
     <string name="scroll_speed">"Vitesse de défilement"</string>
     <string name="motion_gain_help" formatted="false">"25–200 % ; 100 % conserve le réglage initial. La distance concerne les actions gauche/droite. La vitesse concerne les boutons haut/bas et le défilement système. Une entrée verticale plus forte ou prolongée défile davantage ; une poussée horizontale déclenche un seul glissement. La vitesse du pointeur reste inchangée."</string>
+    <string name="mouse_pairing_required">Bluetooth connecté, mais jumelage incomplet. Sélectionnez Connecter la souris.</string>
+    <string name="mouse_pairing_pending">Confirmez le jumelage Bluetooth sur les deux appareils ; la commande reste désactivée.</string>
+    <string name="mouse_pairing_failed">Jumelage incomplet. Vérifiez les invites, puis sélectionnez Connecter la souris pour réessayer.</string>
+    <string name="mouse_pairing_complete">Jumelage terminé. Attendez la connexion souris, puis activez la commande manuellement.</string>
+    <string name="preview_label">"Version bêta"</string>
+    <string name="preview_notice">"Version bêta : la compatibilité et la précision du pointeur sont encore en cours d’amélioration. L’aide à l’alignement est expérimentale."</string>
 </resources>
