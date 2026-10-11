@@ -2,9 +2,9 @@
 
 Quest 3 Android AirPlay receiver with service-owned BLE HID mouse controls, based on [localair](https://github.com/phoria-sam-tg/localair).
 
-## Current preview: 0.2.30
+## Current preview: 0.2.31
 
-Version code 38. Uses Mirror and Mouse as the app, default receiver and Bluetooth
+Version code 39. Uses Mirror and Mouse as the app, default receiver and Bluetooth
 name, and includes user-requested Bluetooth pairing recovery. Adds relative ray control, shape-and-motion tracking, four
 languages, settings, onboarding, adjustable gestures and hideable controls.
 Context loss disarms input; resume manually. Pause before removing the headset.

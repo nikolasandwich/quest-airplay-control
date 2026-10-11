@@ -238,6 +238,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     private fun startPointerObservation() {
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) return
         val ready = surfaceReady && svc?.video?.hasFrames == true && hasWindowFocus()
         android.util.Log.i("PointerObservation", "User requested capture: surface=$surfaceReady frames=${svc?.video?.hasFrames} focus=${hasWindowFocus()}")
         if (!ready) {
@@ -367,7 +368,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
             rayButton.text=AppText.get(if(rayMode)R.string.relative_ray_on else R.string.relative_ray_off)
             updateHidUi()
         }
-        rayButton.setOnLongClickListener {closeSettingsPage();startPointerObservation();true}
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            rayButton.setOnLongClickListener {closeSettingsPage();startPointerObservation();true}
+        }
         alignButton=setting(AppText.get(if(alignmentRequested)R.string.alignment_on else R.string.alignment_off)){
             alignmentRequested=!alignmentRequested
             getSharedPreferences("pointer_ui",MODE_PRIVATE).edit().putBoolean("alignment_enabled",alignmentRequested).apply()

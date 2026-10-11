@@ -46,6 +46,14 @@ public final class HidController extends ContextWrapper implements RayInputTrans
         mappedScroll.configure(false,1,6);
         refreshMotionPreferences();
     }
+    private String firmwareRevision() {
+        try {
+            String version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            return version == null ? "unknown" : version;
+        } catch (PackageManager.NameNotFoundException e) {
+            return "unknown";
+        }
+    }
     public void attachUi(Object owner, Runnable changed) {
         if(uiOwner!=owner){disarm();uiOwner=owner;}
         listener=changed;
@@ -365,7 +373,7 @@ public final class HidController extends ContextWrapper implements RayInputTrans
             // 0xffff, local product 1, version 0x0018. Not a shipping vendor ID.
             device.addCharacteristic(characteristic(0x2a50,2,1,new byte[]{1,(byte)0xff,(byte)0xff,1,0,0x18,0}));
             device.addCharacteristic(characteristic(0x2a24,2,1,DeviceIdentity.PRODUCT_NAME.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-            device.addCharacteristic(characteristic(0x2a28,2,1,"0.2.8-align-preview".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            device.addCharacteristic(characteristic(0x2a28,2,1,firmwareRevision().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             pendingServices.clear();
             pendingServices.add(service);pendingServices.add(battery);pendingServices.add(device);
             addNextService();

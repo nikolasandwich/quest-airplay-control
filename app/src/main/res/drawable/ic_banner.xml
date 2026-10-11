@@ -1,10 +1,5 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="320dp"
-    android:height="180dp"
-    android:viewportWidth="320"
-    android:viewportHeight="180">
-    <path android:fillColor="#111111"
-        android:pathData="M0,0h320v180h-320z" />
-    <path android:fillColor="#4FC3F7"
-        android:pathData="M40,90 L140,90 M160,60 L160,120 M180,90 L280,90" />
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item android:width="180dp" android:height="180dp"
+        android:gravity="center" android:drawable="@drawable/brand_icon" />
+</layer-list>
